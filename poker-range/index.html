@@ -1,1 +1,1619 @@
-<h1>poker-range</h1>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Texas Hold'em Range Viewer</title>
+<style>
+/* ================================================================
+   RESET & ROOT
+================================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:          #08080f;
+  --surface:     #0f0f18;
+  --surface-2:   #161620;
+  --surface-3:   #1c1c28;
+  --border:      #252535;
+  --border-2:    #353548;
+
+  --text:        #e0e0ee;
+  --text-2:      #8888a8;
+  --text-3:      #44445a;
+
+  --green:       #a855f7;
+  --green-dim:   #7c3aed;
+  --green-deep:  #1a0a2e;
+  --cell-open:   #2a1245;
+  --cell-open-h: #3a1a5c;
+
+  --gold:        #f0bf38;
+  --cell-sit:    #3a2c00;
+  --cell-sit-h:  #503d00;
+
+  --red:         #e04040;
+  --cell-fold:   #3a0c0c;
+  --cell-fold-h: #501414;
+
+  --cell-bg:     #141420;
+  --cell-hover:  #1e1e2e;
+
+  --radius:      6px;
+  --radius-sm:   4px;
+}
+
+html, body { height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ================================================================
+   HEADER
+================================================================ */
+#header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  flex-shrink: 0;
+}
+.header-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.header-suit {
+  font-size: 28px;
+  color: var(--green);
+  line-height: 1;
+  text-shadow: 0 0 18px rgba(168,85,247,.45);
+  flex-shrink: 0;
+}
+.header-title {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: var(--text);
+}
+.header-sub {
+  font-size: 11px;
+  color: var(--text-2);
+  letter-spacing: .04em;
+  margin-top: 2px;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 100px;
+  background: var(--green-deep);
+  color: var(--green);
+  border: 1px solid rgba(168,85,247,.25);
+}
+
+/* ================================================================
+   CONTROLS
+================================================================ */
+#controls {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 24px;
+  flex-shrink: 0;
+}
+.controls-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.ctrl-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ctrl-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-2);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+select.ctrl-select {
+  appearance: none;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  padding: 5px 26px 5px 9px;
+  cursor: pointer;
+  outline: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236666888' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 7px center;
+  transition: border-color .15s;
+}
+select.ctrl-select:hover { border-color: var(--border-2); }
+select.ctrl-select:focus {
+  border-color: var(--green-dim);
+  box-shadow: 0 0 0 2px rgba(124,58,237,.2);
+}
+.vdivider {
+  width: 1px;
+  height: 24px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+  padding: 5px 13px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all .15s;
+  outline: none;
+  white-space: nowrap;
+}
+.btn:focus-visible { box-shadow: 0 0 0 2px rgba(168,85,247,.4); }
+.btn-ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-2);
+}
+.btn-ghost:hover {
+  background: var(--surface-3);
+  border-color: var(--border-2);
+  color: var(--text);
+}
+.btn-primary {
+  background: var(--green-deep);
+  border-color: rgba(168,85,247,.22);
+  color: var(--green);
+}
+.btn-primary:hover {
+  background: rgba(88,28,135,.6);
+  border-color: rgba(168,85,247,.45);
+}
+.btn-sm { font-size: 12px; padding: 4px 10px; }
+
+/* ================================================================
+   SEARCH BAR
+================================================================ */
+#search-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 24px;
+  flex-shrink: 0;
+}
+.search-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.search-wrap {
+  position: relative;
+  width: 220px;
+}
+.search-ico {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-3);
+  font-size: 14px;
+  pointer-events: none;
+  line-height: 1;
+}
+#search-input {
+  width: 100%;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  padding: 5px 9px 5px 30px;
+  outline: none;
+  transition: border-color .15s;
+}
+#search-input::placeholder { color: var(--text-3); }
+#search-input:focus { border-color: var(--green-dim); }
+#search-hint { font-size: 11px; color: var(--text-2); }
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.legend-sw {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ================================================================
+   MAIN LAYOUT
+================================================================ */
+#main {
+  flex: 1;
+  max-width: 1440px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 20px 24px;
+  display: grid;
+  grid-template-columns: 1fr 268px;
+  gap: 20px;
+  align-items: start;
+}
+
+/* ================================================================
+   MATRIX
+================================================================ */
+#matrix-wrap {
+  /* container for labels + grid */
+}
+.matrix-grid-layout {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  grid-template-rows: 18px 1fr;
+  gap: 2px;
+}
+.matrix-corner { /* empty top-left corner */ }
+.matrix-col-labels {
+  grid-column: 2;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: repeat(13, 1fr);
+  gap: 2px;
+}
+.matrix-row-labels {
+  grid-column: 1;
+  grid-row: 2;
+  display: grid;
+  grid-template-rows: repeat(13, 1fr);
+  gap: 2px;
+}
+.m-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-3);
+  letter-spacing: .04em;
+}
+#hand-grid {
+  grid-column: 2;
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: repeat(13, 1fr);
+  gap: 2px;
+}
+
+/* ---- Cell ---- */
+.hcell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: clamp(7px, 1.05vw, 12px);
+  font-weight: 600;
+  letter-spacing: -.02em;
+  background: var(--cell-bg);
+  color: var(--text-3);
+  border: 1px solid transparent;
+  transition: transform .1s, background .12s, border-color .12s, color .12s, box-shadow .12s;
+  user-select: none;
+  position: relative;
+}
+.hcell:hover {
+  transform: scale(1.1);
+  z-index: 10;
+  background: var(--cell-hover);
+  color: var(--text-2);
+  border-color: var(--border-2);
+  box-shadow: 0 4px 14px rgba(0,0,0,.6);
+}
+.hcell[data-state="open"] {
+  background: var(--cell-open);
+  color: #e9d5ff;
+  border-color: rgba(168,85,247,.18);
+}
+.hcell[data-state="open"]:hover { background: var(--cell-open-h); }
+.hcell[data-state="situational"] {
+  background: var(--cell-sit);
+  color: #e8c880;
+  border-color: rgba(240,191,56,.18);
+}
+.hcell[data-state="situational"]:hover { background: var(--cell-sit-h); }
+.hcell[data-state="fold"] {
+  background: var(--cell-fold);
+  color: #e88888;
+  border-color: rgba(224,64,64,.18);
+}
+.hcell[data-state="fold"]:hover { background: var(--cell-fold-h); }
+
+/* Selected ring */
+.hcell.selected {
+  box-shadow: 0 0 0 2px var(--green), 0 4px 18px rgba(168,85,247,.3);
+  z-index: 5;
+}
+
+/* Search states */
+.hcell.s-match {
+  box-shadow: 0 0 0 2px var(--gold), 0 4px 12px rgba(240,191,56,.35);
+  z-index: 5;
+}
+.hcell.s-dim { opacity: .22; }
+
+/* Pocket pair label tweak */
+.hcell.is-pair { color: var(--text-2); }
+.hcell.is-pair[data-state="none"] { background: #181824; }
+
+/* ================================================================
+   SIDE PANEL
+================================================================ */
+#side-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  position: sticky;
+  top: 20px;
+}
+.sp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  gap: 10px;
+  color: var(--text-2);
+}
+.sp-empty-icon { font-size: 36px; opacity: .25; }
+.sp-empty-text { font-size: 13px; text-align: center; line-height: 1.6; }
+
+.sp-hand-name {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  color: var(--text);
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.sp-type-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 100px;
+  margin-bottom: 14px;
+}
+.tb-pair   { background: rgba(168,85,247,.12); color: var(--green);  border: 1px solid rgba(168,85,247,.22); }
+.tb-suited { background: rgba(100,150,255,.1); color: #7ab0ff;      border: 1px solid rgba(100,150,255,.22); }
+.tb-offsuit{ background: rgba(200,150,80,.1);  color: #d4a870;      border: 1px solid rgba(200,150,80,.22); }
+
+.sp-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.sp-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 11px;
+}
+.sp-card-lbl {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-2);
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.sp-card-val {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.sp-stars {
+  font-size: 15px;
+  letter-spacing: 1px;
+  color: var(--gold);
+  line-height: 1.4;
+}
+.sp-stars .dim { opacity: .18; }
+
+.sp-state-row { margin-bottom: 14px; }
+.sp-state-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 11px;
+  border-radius: 100px;
+}
+.sc-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+.sp-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 14px 0;
+}
+.sp-section-lbl {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-2);
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  margin-bottom: 7px;
+}
+.sp-desc {
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.65;
+}
+.sp-cycle-row {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.sp-cycle-pill {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid;
+  opacity: .5;
+}
+.sp-cycle-pill.active { opacity: 1; }
+
+/* ================================================================
+   STATS BAR
+================================================================ */
+#stats-bar {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 9px 24px;
+  flex-shrink: 0;
+}
+.stats-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+}
+.stat-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.stat-lbl { color: var(--text-2); }
+.stat-val {
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.stats-vd {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+}
+.stat-total {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.stat-total strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ================================================================
+   MODAL
+================================================================ */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.78);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; animation: fadeIn .14s ease; }
+.modal-box {
+  background: var(--surface-3);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  width: 460px;
+  max-width: calc(100vw - 32px);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 64px rgba(0,0,0,.8);
+  animation: slideUp .14s ease;
+}
+.modal-hdr {
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-title { font-size: 15px; font-weight: 700; }
+.modal-x {
+  background: transparent;
+  border: none;
+  color: var(--text-2);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
+  line-height: 1;
+  transition: color .12s;
+}
+.modal-x:hover { color: var(--text); }
+.modal-body {
+  padding: 16px 18px;
+  overflow-y: auto;
+  flex: 1;
+}
+.save-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+#save-name-input {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 7px 11px;
+  outline: none;
+  transition: border-color .15s;
+}
+#save-name-input:focus { border-color: var(--green-dim); }
+#save-name-input::placeholder { color: var(--text-3); }
+.saved-list { display: flex; flex-direction: column; gap: 7px; }
+.saved-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  transition: border-color .12s;
+}
+.saved-row:hover { border-color: var(--border-2); }
+.saved-name { font-size: 13px; font-weight: 600; flex: 1; }
+.saved-meta { font-size: 11px; color: var(--text-2); }
+.saved-actions { display: flex; gap: 5px; }
+.empty-saved {
+  text-align: center;
+  color: var(--text-2);
+  font-size: 13px;
+  padding: 28px 0;
+}
+
+/* ================================================================
+   TOAST
+================================================================ */
+#toast {
+  position: fixed;
+  bottom: 64px;
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  background: var(--surface-3);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  padding: 10px 18px;
+  font-size: 13px;
+  color: var(--text);
+  box-shadow: 0 8px 24px rgba(0,0,0,.6);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .2s, transform .2s;
+  z-index: 2000;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ================================================================
+   ANIMATIONS
+================================================================ */
+@keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* ================================================================
+   AUTH SCREEN
+================================================================ */
+#auth-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn .2s ease;
+}
+#auth-screen.hidden { display: none; }
+
+.auth-box {
+  width: 340px;
+  max-width: calc(100vw - 40px);
+  background: var(--surface-3);
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  padding: 36px 32px;
+  box-shadow: 0 32px 80px rgba(0,0,0,.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+.auth-suit {
+  font-size: 40px;
+  color: var(--green);
+  line-height: 1;
+  text-shadow: 0 0 24px rgba(168,85,247,.5);
+  margin-bottom: 16px;
+}
+.auth-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: .02em;
+  margin-bottom: 6px;
+}
+.auth-sub {
+  font-size: 12px;
+  color: var(--text-2);
+  margin-bottom: 28px;
+  text-align: center;
+  line-height: 1.5;
+}
+.auth-input-wrap {
+  position: relative;
+  width: 100%;
+  margin-bottom: 12px;
+}
+#auth-input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: .25em;
+  text-align: center;
+  padding: 12px 16px;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+  /* hide actual characters, show dots */
+  -webkit-text-security: disc;
+}
+#auth-input:focus {
+  border-color: var(--green-dim);
+  box-shadow: 0 0 0 3px rgba(168,85,247,.2);
+}
+#auth-input.error {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px rgba(224,64,64,.18);
+  animation: shake .3s ease;
+}
+#auth-error {
+  font-size: 12px;
+  color: var(--red);
+  height: 16px;
+  margin-bottom: 16px;
+  text-align: center;
+  opacity: 0;
+  transition: opacity .15s;
+}
+#auth-error.show { opacity: 1; }
+#auth-btn {
+  width: 100%;
+  padding: 11px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  border-radius: var(--radius);
+  border: 1px solid rgba(168,85,247,.3);
+  background: rgba(168,85,247,.18);
+  color: var(--green);
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  font-family: inherit;
+  outline: none;
+}
+#auth-btn:hover {
+  background: rgba(168,85,247,.3);
+  border-color: rgba(168,85,247,.55);
+}
+#auth-btn:focus-visible {
+  box-shadow: 0 0 0 3px rgba(168,85,247,.3);
+}
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20%     { transform: translateX(-6px); }
+  40%     { transform: translateX(6px); }
+  60%     { transform: translateX(-4px); }
+  80%     { transform: translateX(4px); }
+}
+
+/* ================================================================
+   RESPONSIVE
+================================================================ */
+@media (max-width: 960px) {
+  #main {
+    grid-template-columns: 1fr;
+    padding: 14px 16px;
+  }
+  #side-panel { position: static; }
+  .legend { margin-left: 0; }
+}
+
+@media (max-width: 640px) {
+  #header { padding: 0 14px; }
+  .header-title { font-size: 14px; }
+  .header-sub { display: none; }
+  #controls, #search-bar { padding: 8px 14px; }
+  .controls-inner { gap: 8px; }
+  .vdivider { display: none; }
+  #stats-bar { padding: 8px 14px; }
+  #main { padding: 10px 12px; gap: 14px; }
+  .hcell { font-size: clamp(6px, 2.2vw, 10px); }
+  .legend { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ================================================================
+     AUTH SCREEN
+================================================================ -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-suit">♠</div>
+    <div class="auth-title">Texas Hold'em Range Viewer</div>
+    <div class="auth-sub">パスワードを入力してください</div>
+    <div class="auth-input-wrap">
+      <input type="password" id="auth-input" placeholder="····" maxlength="20" autocomplete="current-password" />
+    </div>
+    <div id="auth-error">パスワードが正しくありません</div>
+    <button id="auth-btn">ログイン</button>
+  </div>
+</div>
+
+<!-- ================================================================
+     HEADER
+================================================================ -->
+<header id="header">
+  <div class="header-inner">
+    <div class="header-left">
+      <span class="header-suit">♠</span>
+      <div>
+        <div class="header-title">Texas Hold'em Range Viewer</div>
+        <div class="header-sub">ハンドレンジを視覚的に学習するツール</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="badge">v1.0</span>
+    </div>
+  </div>
+</header>
+
+<!-- ================================================================
+     CONTROLS
+================================================================ -->
+<div id="controls">
+  <div class="controls-inner">
+    <div class="ctrl-group">
+      <label class="ctrl-label" for="pos-sel">ポジション</label>
+      <select id="pos-sel" class="ctrl-select">
+        <option value="UTG">UTG</option>
+        <option value="HJ">HJ</option>
+        <option value="CO">CO</option>
+        <option value="BTN" selected>BTN</option>
+        <option value="SB">SB</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <label class="ctrl-label" for="range-sel">レンジ</label>
+      <select id="range-sel" class="ctrl-select">
+        <option value="Tight">Tight</option>
+        <option value="Standard" selected>Standard</option>
+        <option value="Loose">Loose</option>
+      </select>
+    </div>
+    <div class="vdivider"></div>
+    <button id="btn-preset" class="btn btn-primary">▶ プリセット適用</button>
+    <button id="btn-reset"  class="btn btn-ghost">↺ リセット</button>
+    <div class="vdivider"></div>
+    <button id="btn-save"   class="btn btn-ghost">↑ 保存</button>
+    <button id="btn-load"   class="btn btn-ghost">↓ 読み込み</button>
+  </div>
+</div>
+
+<!-- ================================================================
+     SEARCH BAR
+================================================================ -->
+<div id="search-bar">
+  <div class="search-inner">
+    <div class="search-wrap">
+      <span class="search-ico">⌕</span>
+      <input type="text" id="search-input" placeholder="ハンドを検索 (例: AK, 77, s)" autocomplete="off" spellcheck="false" />
+    </div>
+    <span id="search-hint"></span>
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-sw" style="background:var(--cell-bg)"></div>未選択
+      </div>
+      <div class="legend-item">
+        <div class="legend-sw" style="background:var(--cell-open)"></div>オープン
+      </div>
+      <div class="legend-item">
+        <div class="legend-sw" style="background:var(--cell-sit)"></div>状況次第
+      </div>
+      <div class="legend-item">
+        <div class="legend-sw" style="background:var(--cell-fold)"></div>フォールド
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     MAIN
+================================================================ -->
+<main id="main">
+  <!-- Matrix -->
+  <div id="matrix-wrap">
+    <div class="matrix-grid-layout">
+      <div class="matrix-corner"></div>
+      <div class="matrix-col-labels" id="col-labels"></div>
+      <div class="matrix-row-labels" id="row-labels"></div>
+      <div id="hand-grid"></div>
+    </div>
+  </div>
+
+  <!-- Side Panel -->
+  <aside id="side-panel">
+    <div class="sp-empty" id="sp-empty">
+      <div class="sp-empty-icon">🃏</div>
+      <div class="sp-empty-text">セルをクリックして<br>ハンド情報を表示</div>
+    </div>
+    <div id="sp-content" style="display:none"></div>
+  </aside>
+</main>
+
+<!-- ================================================================
+     STATS BAR
+================================================================ -->
+<div id="stats-bar">
+  <div class="stats-inner">
+    <div class="stat-item">
+      <div class="stat-dot" style="background:var(--green)"></div>
+      <span class="stat-lbl">Open:</span>
+      <span class="stat-val" id="stat-open">0</span>
+      <span class="stat-lbl">ハンド</span>
+    </div>
+    <div class="stats-vd"></div>
+    <div class="stat-item">
+      <div class="stat-dot" style="background:var(--gold)"></div>
+      <span class="stat-lbl">Situational:</span>
+      <span class="stat-val" id="stat-sit">0</span>
+      <span class="stat-lbl">ハンド</span>
+    </div>
+    <div class="stats-vd"></div>
+    <div class="stat-item">
+      <div class="stat-dot" style="background:var(--red)"></div>
+      <span class="stat-lbl">Fold:</span>
+      <span class="stat-val" id="stat-fold">0</span>
+      <span class="stat-lbl">ハンド</span>
+    </div>
+    <div class="stat-total">
+      合計 <strong id="stat-combos">0</strong> コンボ
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     MODAL
+================================================================ -->
+<div id="modal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="レンジ保存・読み込み">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <div class="modal-title">レンジの保存・読み込み</div>
+      <button class="modal-x" id="modal-close" aria-label="閉じる">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="save-form">
+        <input type="text" id="save-name-input" placeholder="レンジ名を入力 (例: サヤカのBTNレンジ)" />
+        <button id="btn-do-save" class="btn btn-primary">保存</button>
+      </div>
+      <div id="saved-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast notification -->
+<div id="toast"></div>
+
+<script>
+/* ================================================================
+   CONSTANTS
+================================================================ */
+const RANKS  = ['A','K','Q','J','T','9','8','7','6','5','4','3','2'];
+const STATES = ['none','open','situational','fold'];
+
+/* ================================================================
+   HAND UTILITIES
+================================================================ */
+
+/** Returns canonical hand name for grid cell (row i, col j) */
+function handName(i, j) {
+  if (i === j) return RANKS[i] + RANKS[i];
+  if (i < j)   return RANKS[i] + RANKS[j] + 's';  // suited: upper-right triangle
+  return RANKS[j] + RANKS[i] + 'o';               // offsuit: lower-left triangle
+}
+
+/** Number of combos for a given hand */
+function combos(name) {
+  if (!name.endsWith('s') && !name.endsWith('o')) return 6;  // pocket pair
+  return name.endsWith('s') ? 4 : 12;
+}
+
+/** Hand type string */
+function handType(name) {
+  if (!name.endsWith('s') && !name.endsWith('o')) return 'pair';
+  return name.endsWith('s') ? 'suited' : 'offsuit';
+}
+
+/** Star rating 1–5 */
+function starRating(name) {
+  const H = name;
+  if (['AA','KK','QQ','AKs','AKo'].includes(H)) return 5;
+  if (['JJ','TT','AQs','AQo','AJs','KQs'].includes(H)) return 4;
+  if (['99','88','ATs','AJo','ATo','KJs','KQo','QJs','JTs'].includes(H)) return 3;
+  if (['77','66','A9s','A8s','A7s','A6s','A5s','KTs','K9s','QTs','Q9s','T9s','98s','87s','76s','65s','54s','KJo','QJo','KTo'].includes(H)) return 2;
+  return 1;
+}
+
+/** Description for a hand */
+function handDesc(name) {
+  const MAP = {
+    'AA': 'ポーカー最強のハンド。常に積極的にバリューを積み上げよう。',
+    'KK': 'AA以外のほぼすべてのハンドに対して圧倒的優位。プリフロップ最強クラス。',
+    'QQ': 'プレミアムペア。AやKが出てもフォールドしすぎないこと。',
+    'JJ': '強力なペアだが、ハイカードのボードでは注意が必要。',
+    'TT': '中〜高ランクのペア。ポジションとアクションで適切に対応しよう。',
+    '99': 'セットを狙いながら積極的にプレイ。ポジションが重要。',
+    '88': 'ミドルペア。セット率約12%を意識しつつ、フロップを見ていこう。',
+    '77': '中程度のポケットペア。基本はセット狙い。ポジション最重視。',
+    '66': '小〜中ポケットペア。インプライドオッズがある場面でコール。',
+    '55': '小ポケットペア。セット狙い専用。',
+    '44': '小ポケットペア。深いスタックでのセットマイニング。',
+    '33': '低ランクペア。セット率を考えて判断。',
+    '22': '最低ランクペア。大きなインプライドオッズが必要。',
+    'AKs': 'プレミアムスーテッドハンド。フラッシュドロー + ナッツ性能が高い。全ポジションで3ベット可。',
+    'AKo': 'ほぼすべての状況でレイズ・3ベット。ポーカー最重要ハンドの一つ。',
+    'AQs': '非常に強い。ドローポテンシャルも兼ね備えたプレミアムハンド。',
+    'AQo': '強いがポジション依存。アウトポジションでは少し慎重に。',
+    'AJs': 'スーテッドAx。ナッツフラッシュドロー + ブロードウェイポテンシャル。',
+    'AJo': 'ポジション次第で評価が大きく変わる。BTN/COなら積極的に。',
+    'ATs': 'スーテッドAx。フラッシュドロー性能が高く、多くの局面で利益が出る。',
+    'ATo': 'BTN/COから有効。ポジション外では慎重に。',
+    'A9s': 'スーテッドAx。ポジションがあれば積極的にプレイできる。',
+    'A8s': 'スーテッドAx。BTN/SBスティールに使える。',
+    'A7s': 'スーテッドAx。3ベットブラフとしても機能する。',
+    'A6s': 'スーテッドAx。ホイール(A2345)ストレートのポテンシャルも持つ。',
+    'A5s': '最もバランスの取れたスーテッドAx。フラッシュ + ストレートドロー両立。',
+    'A4s': 'スーテッドAx。ホイールポテンシャルとナッツフラッシュドロー。',
+    'A3s': 'スーテッドAx。ナッツフラッシュドロー専用と思ってよい。',
+    'A2s': '最弱スーテッドAだが、ホイールドロー + ナッツフラッシュが強み。',
+    'KQs': 'スーテッドブロードウェイコネクター。ほぼプレミアム。',
+    'KQo': '強いブロードウェイ。ポジションがあれば積極的にプレイ。',
+    'KJs': 'スーテッドK。ブロードウェイ完成率が高く優秀。',
+    'KJo': 'ポジション依存。アウトポジションでは若干弱い。',
+    'KTs': 'スーテッドK。BTN/COからは強い。',
+    'K9s': 'スーテッドK。BTNスティールに使える中堅ハンド。',
+    'QJs': '最高クラスのスーテッドコネクター。ストレート + フラッシュドローが豊富。',
+    'QTs': 'スーテッドコネクター。ポジションがあれば優れたエクイティ。',
+    'Q9s': 'スーテッド中堅ハンド。ポジション + アクションに応じて判断。',
+    'JTs': 'ポーカー最高クラスのスーテッドコネクター。あらゆるドローが完成する強力なハンド。',
+    'T9s': '強力なスーテッドコネクター。マルチウェイでも高いエクイティを持つ。',
+    '98s': 'スーテッドコネクター。ポジションがあれば積極的にプレイできる。',
+    '87s': 'スーテッドコネクター。ミドルボードでのドロー力が強い。',
+    '76s': 'スーテッドコネクター。ポジションがあれば価値が出る。',
+    '65s': 'スーテッドコネクター。ホイール系ストレートドローが魅力。',
+    '54s': 'スーテッドコネクター。ホイールドロー + フラッシュドローが最大の武器。',
+  };
+  if (MAP[name]) return MAP[name];
+  const t = handType(name);
+  if (t === 'suited')  return 'スーテッドハンド。フラッシュドローのポテンシャルがある。ポジションを意識してプレイしよう。';
+  if (t === 'offsuit') return 'オフスーテッドハンド。スーテッドバージョンより価値は低い。ポジションと状況に応じて慎重に判断しよう。';
+  return 'ポジションと状況によって評価が変わるハンド。慎重に判断しよう。';
+}
+
+/* ================================================================
+   PRESET RANGES
+================================================================ */
+const PRESETS = {
+  UTG: {
+    Tight:    ['AA','KK','QQ','JJ','AKs','AKo'],
+    Standard: ['AA','KK','QQ','JJ','TT','AKs','AQs','AJs','KQs','AKo'],
+    Loose:    ['AA','KK','QQ','JJ','TT','99','AKs','AQs','AJs','ATs','KQs','KJs','AKo','AQo'],
+  },
+  HJ: {
+    Tight:    ['AA','KK','QQ','JJ','TT','AKs','AQs','AKo'],
+    Standard: ['AA','KK','QQ','JJ','TT','99','88','AKs','AQs','AJs','ATs','KQs','KJs','QJs','AKo'],
+    Loose:    ['AA','KK','QQ','JJ','TT','99','88','77','AKs','AQs','AJs','ATs','A9s','KQs','KJs','KTs','QJs','QTs','JTs','AKo','AQo','AJo'],
+  },
+  CO: {
+    Tight:    ['AA','KK','QQ','JJ','TT','99','AKs','AQs','AJs','KQs','AKo','AQo'],
+    Standard: ['AA','KK','QQ','JJ','TT','99','88','AKs','AQs','AJs','ATs','A9s','KQs','KJs','KTs','QJs','QTs','JTs','87s','76s','AKo'],
+    Loose:    ['AA','KK','QQ','JJ','TT','99','88','77','66','AKs','AQs','AJs','ATs','A9s','A8s','A7s','A6s','A5s','KQs','KJs','KTs','K9s','QJs','QTs','Q9s','JTs','T9s','98s','87s','76s','65s','AKo','AQo','AJo','KQo'],
+  },
+  BTN: {
+    Tight:    ['AA','KK','QQ','JJ','TT','99','88','AKs','AQs','AJs','ATs','A9s','KQs','KJs','QJs','AKo','AQo','AJo'],
+    Standard: ['AA','KK','QQ','JJ','TT','99','88','77','AKs','AQs','AJs','ATs','A9s','A8s','A7s','A6s','A5s','A4s','A3s','A2s','KQs','KJs','KTs','K9s','QJs','QTs','Q9s','JTs','T9s','98s','87s','76s','65s','54s','AKo','AQo','AJo','KQo'],
+    Loose:    ['AA','KK','QQ','JJ','TT','99','88','77','66','55','AKs','AQs','AJs','ATs','A9s','A8s','A7s','A6s','A5s','A4s','A3s','A2s','KQs','KJs','KTs','K9s','K8s','K7s','QJs','QTs','Q9s','Q8s','JTs','J9s','T9s','T8s','98s','97s','87s','86s','76s','75s','65s','64s','54s','53s','AKo','AQo','AJo','ATo','KQo','KJo','QJo'],
+  },
+  SB: {
+    Tight:    ['AA','KK','QQ','JJ','TT','99','AKs','AQs','AJs','KQs','AKo','AQo'],
+    Standard: ['AA','KK','QQ','JJ','TT','99','88','77','AKs','AQs','AJs','ATs','A9s','A8s','A7s','A6s','A5s','A4s','A3s','KQs','KJs','KTs','K9s','QJs','QTs','JTs','98s','87s','65s','AKo','AQo','AJo','KQo'],
+    Loose:    ['AA','KK','QQ','JJ','TT','99','88','77','66','AKs','AQs','AJs','ATs','A9s','A8s','A7s','A6s','A5s','A4s','A3s','A2s','KQs','KJs','KTs','K9s','K8s','QJs','QTs','Q9s','JTs','T9s','98s','87s','76s','65s','54s','AKo','AQo','AJo','ATo','KQo','KJo'],
+  },
+};
+
+/* ================================================================
+   APPLICATION STATE
+================================================================ */
+let gridState    = {};   // { 'AKs': 'none'|'open'|'situational'|'fold', … }
+let selectedHand = null; // currently highlighted cell
+
+/** Initialise every cell to 'none' */
+function initGrid() {
+  for (let i = 0; i < 13; i++)
+    for (let j = 0; j < 13; j++)
+      gridState[handName(i, j)] = 'none';
+}
+
+/* ================================================================
+   BUILD DOM: GRID
+================================================================ */
+function buildGrid() {
+  const grid   = document.getElementById('hand-grid');
+  const colLbl = document.getElementById('col-labels');
+  const rowLbl = document.getElementById('row-labels');
+
+  // Column labels (A–2)
+  colLbl.innerHTML = '';
+  RANKS.forEach(r => {
+    const d = document.createElement('div');
+    d.className = 'm-label';
+    d.textContent = r;
+    colLbl.appendChild(d);
+  });
+
+  // Row labels (A–2)
+  rowLbl.innerHTML = '';
+  RANKS.forEach(r => {
+    const d = document.createElement('div');
+    d.className = 'm-label';
+    d.textContent = r;
+    rowLbl.appendChild(d);
+  });
+
+  // Cells
+  grid.innerHTML = '';
+  for (let i = 0; i < 13; i++) {
+    for (let j = 0; j < 13; j++) {
+      const name = handName(i, j);
+      const cell = document.createElement('div');
+      cell.className = 'hcell' + (i === j ? ' is-pair' : '');
+      cell.dataset.hand  = name;
+      cell.dataset.state = 'none';
+      cell.textContent   = name;
+      cell.setAttribute('role', 'button');
+      cell.setAttribute('tabindex', '0');
+      cell.setAttribute('title', name);
+      cell.addEventListener('click', () => onCellClick(name));
+      cell.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onCellClick(name); }
+      });
+      grid.appendChild(cell);
+    }
+  }
+}
+
+/* ================================================================
+   UPDATE DOM: SINGLE CELL
+================================================================ */
+function refreshCell(name) {
+  const el = document.querySelector(`.hcell[data-hand="${name}"]`);
+  if (!el) return;
+  el.dataset.state = gridState[name] || 'none';
+  el.classList.toggle('selected', name === selectedHand);
+}
+
+/** Refresh every cell (used after bulk state changes) */
+function refreshAll() {
+  document.querySelectorAll('.hcell').forEach(el => {
+    const name = el.dataset.hand;
+    el.dataset.state = gridState[name] || 'none';
+    el.classList.toggle('selected', name === selectedHand);
+  });
+}
+
+/* ================================================================
+   SIDE PANEL
+================================================================ */
+function renderSidePanel(name) {
+  const empty   = document.getElementById('sp-empty');
+  const content = document.getElementById('sp-content');
+
+  if (!name) {
+    empty.style.display   = 'flex';
+    content.style.display = 'none';
+    return;
+  }
+  empty.style.display   = 'none';
+  content.style.display = 'block';
+
+  const state  = gridState[name] || 'none';
+  const type   = handType(name);
+  const c      = combos(name);
+  const rating = starRating(name);
+  const desc   = handDesc(name);
+
+  // Type badge
+  const typeLabelMap = { pair: 'ポケットペア', suited: 'スーテッド', offsuit: 'オフスーテッド' };
+  const typeBadgeMap = { pair: 'tb-pair', suited: 'tb-suited', offsuit: 'tb-offsuit' };
+
+  // Stars HTML
+  const stars = '★'.repeat(rating) + `<span class="dim">${'★'.repeat(5 - rating)}</span>`;
+
+  // State chip styling
+  const stateMap = {
+    none:        { label: '未選択',   color: 'var(--text-2)',  bg: 'rgba(120,120,160,.12)', border: 'rgba(120,120,160,.2)' },
+    open:        { label: 'オープン', color: 'var(--green)',   bg: 'rgba(168,85,247,.12)',   border: 'rgba(168,85,247,.25)' },
+    situational: { label: '状況次第', color: 'var(--gold)',    bg: 'rgba(240,191,56,.12)',  border: 'rgba(240,191,56,.25)' },
+    fold:        { label: 'フォールド',color: 'var(--red)',    bg: 'rgba(224,64,64,.12)',   border: 'rgba(224,64,64,.25)' },
+  };
+  const sc = stateMap[state];
+
+  // Cycle pills
+  const pillsHTML = STATES.map(s => {
+    const sm = stateMap[s];
+    const isActive = s === state;
+    return `<div class="sp-cycle-pill${isActive ? ' active' : ''}" style="color:${sm.color};border-color:${sm.border};background:${isActive ? sm.bg : 'transparent'}">${sm.label}</div>`;
+  }).join('');
+
+  content.innerHTML = `
+    <div class="sp-hand-name">${escHtml(name)}</div>
+    <span class="sp-type-badge ${typeBadgeMap[type]}">${typeLabelMap[type]}</span>
+
+    <div class="sp-info-grid">
+      <div class="sp-card">
+        <div class="sp-card-lbl">コンボ数</div>
+        <div class="sp-card-val">${c}</div>
+      </div>
+      <div class="sp-card">
+        <div class="sp-card-lbl">ハンド強度</div>
+        <div class="sp-stars">${stars}</div>
+      </div>
+    </div>
+
+    <div class="sp-state-row">
+      <div class="sp-card-lbl sp-section-lbl">現在の状態</div>
+      <div class="sp-state-chip" style="color:${sc.color};background:${sc.bg};border:1px solid ${sc.border}">
+        <div class="sc-dot" style="background:${sc.color}"></div>
+        ${sc.label}
+      </div>
+    </div>
+
+    <div class="sp-divider"></div>
+
+    <div class="sp-section-lbl">初心者ガイド</div>
+    <div class="sp-desc">${escHtml(desc)}</div>
+
+    <div class="sp-divider"></div>
+
+    <div class="sp-section-lbl">クリックで状態を切り替え</div>
+    <div class="sp-cycle-row">${pillsHTML}</div>
+  `;
+}
+
+/* ================================================================
+   STATS BAR
+================================================================ */
+function renderStats() {
+  let openH = 0, openC = 0;
+  let sitH  = 0, sitC  = 0;
+  let foldH = 0, foldC = 0;
+
+  for (const [name, state] of Object.entries(gridState)) {
+    const c = combos(name);
+    if      (state === 'open')        { openH++; openC += c; }
+    else if (state === 'situational') { sitH++;  sitC  += c; }
+    else if (state === 'fold')        { foldH++; foldC += c; }
+  }
+
+  document.getElementById('stat-open').textContent   = openH;
+  document.getElementById('stat-sit').textContent    = sitH;
+  document.getElementById('stat-fold').textContent   = foldH;
+  document.getElementById('stat-combos').textContent = (openC + sitC + foldC).toLocaleString();
+}
+
+/* ================================================================
+   CELL INTERACTION
+================================================================ */
+function onCellClick(name) {
+  const prev  = selectedHand;
+  const cur   = gridState[name] || 'none';
+  const next  = STATES[(STATES.indexOf(cur) + 1) % STATES.length];
+  gridState[name] = next;
+  selectedHand    = name;
+
+  if (prev && prev !== name) refreshCell(prev);
+  refreshCell(name);
+  renderSidePanel(name);
+  renderStats();
+}
+
+/* ================================================================
+   PRESET
+================================================================ */
+function applyPreset(pos, rangeType) {
+  const list = PRESETS[pos]?.[rangeType];
+  if (!list) return;
+
+  // Reset all
+  for (const k in gridState) gridState[k] = 'none';
+
+  // Apply
+  const set = new Set(list);
+  for (const k in gridState) {
+    if (set.has(k)) gridState[k] = 'open';
+  }
+
+  refreshAll();
+  if (selectedHand) renderSidePanel(selectedHand);
+  renderStats();
+  showToast(`${pos} ${rangeType} レンジを適用しました`);
+}
+
+function resetGrid() {
+  for (const k in gridState) gridState[k] = 'none';
+  refreshAll();
+  renderStats();
+  showToast('レンジをリセットしました');
+}
+
+/* ================================================================
+   SEARCH
+================================================================ */
+function onSearch(raw) {
+  const q = raw.trim().toUpperCase();
+  const hint = document.getElementById('search-hint');
+  const cells = document.querySelectorAll('.hcell');
+
+  if (!q) {
+    cells.forEach(c => c.classList.remove('s-match', 's-dim'));
+    hint.textContent = '';
+    return;
+  }
+
+  let matches = 0;
+  cells.forEach(cell => {
+    const name = cell.dataset.hand;
+    // Match: exact or hand name contains query, or query is a single rank letter
+    const hit = name === q || name.includes(q) ||
+                (q.length === 1 && (name[0] === q || name[1] === q));
+    if (hit) {
+      cell.classList.add('s-match');
+      cell.classList.remove('s-dim');
+      matches++;
+    } else {
+      cell.classList.add('s-dim');
+      cell.classList.remove('s-match');
+    }
+  });
+
+  hint.textContent = matches > 0 ? `${matches} ハンドが一致` : '一致なし';
+}
+
+/* ================================================================
+   LOCAL STORAGE
+================================================================ */
+const LS_KEY = 'rv_saved_v1';
+
+function loadSaved() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); }
+  catch { return {}; }
+}
+
+function persistSaved(data) {
+  localStorage.setItem(LS_KEY, JSON.stringify(data));
+}
+
+function saveRange(name) {
+  if (!name.trim()) return false;
+  const saved = loadSaved();
+  saved[name.trim()] = { state: { ...gridState }, at: new Date().toISOString() };
+  persistSaved(saved);
+  return true;
+}
+
+function loadRange(name) {
+  const saved = loadSaved();
+  if (!saved[name]) return false;
+  // Merge: restore only known hands
+  for (const k in gridState) {
+    gridState[k] = saved[name].state[k] || 'none';
+  }
+  refreshAll();
+  if (selectedHand) renderSidePanel(selectedHand);
+  renderStats();
+  return true;
+}
+
+function deleteRange(name) {
+  const saved = loadSaved();
+  delete saved[name];
+  persistSaved(saved);
+}
+
+/* ================================================================
+   MODAL
+================================================================ */
+function openModal() {
+  document.getElementById('modal').classList.add('open');
+  renderSavedList();
+  document.getElementById('save-name-input').focus();
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+}
+
+function renderSavedList() {
+  const saved = loadSaved();
+  const names = Object.keys(saved);
+  const container = document.getElementById('saved-list');
+
+  if (names.length === 0) {
+    container.innerHTML = '<div class="empty-saved">保存済みレンジはありません</div>';
+    return;
+  }
+
+  const rows = names.map(name => {
+    const item = saved[name];
+    const dateStr = new Date(item.at).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const openCount = Object.values(item.state).filter(s => s === 'open').length;
+    const safeName  = escHtml(name);
+    const safeAttr  = name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<div class="saved-row">
+      <div>
+        <div class="saved-name">${safeName}</div>
+        <div class="saved-meta">${dateStr} · Open: ${openCount}ハンド</div>
+      </div>
+      <div class="saved-actions">
+        <button class="btn btn-primary btn-sm" onclick="loadRange('${safeAttr}');closeModal();showToast('${safeAttr} を読み込みました')">読み込み</button>
+        <button class="btn btn-ghost btn-sm"   onclick="deleteRange('${safeAttr}');renderSavedList();showToast('削除しました')">削除</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="sp-section-lbl" style="margin-bottom:10px">保存済みレンジ</div>
+    <div class="saved-list">${rows}</div>
+  `;
+}
+
+/* ================================================================
+   TOAST
+================================================================ */
+let toastTimer = null;
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+/* ================================================================
+   HELPERS
+================================================================ */
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ================================================================
+   EVENT WIRING
+================================================================ */
+function wireEvents() {
+  // Controls
+  document.getElementById('btn-preset').addEventListener('click', () => {
+    applyPreset(
+      document.getElementById('pos-sel').value,
+      document.getElementById('range-sel').value
+    );
+  });
+  document.getElementById('btn-reset').addEventListener('click', resetGrid);
+  document.getElementById('btn-save').addEventListener('click', openModal);
+  document.getElementById('btn-load').addEventListener('click', openModal);
+
+  // Modal
+  document.getElementById('modal-close').addEventListener('click', closeModal);
+  document.getElementById('modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal')) closeModal();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  // Save form
+  const doSave = () => {
+    const input = document.getElementById('save-name-input');
+    if (saveRange(input.value)) {
+      input.value = '';
+      renderSavedList();
+      showToast('レンジを保存しました');
+    } else {
+      showToast('レンジ名を入力してください');
+    }
+  };
+  document.getElementById('btn-do-save').addEventListener('click', doSave);
+  document.getElementById('save-name-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doSave();
+  });
+
+  // Search
+  document.getElementById('search-input').addEventListener('input', e => onSearch(e.target.value));
+}
+
+/* ================================================================
+   AUTH
+================================================================ */
+const AUTH_KEY = 'rv_authed';
+const PASSWORD = '3824';
+
+function checkAuth() {
+  return sessionStorage.getItem(AUTH_KEY) === '1';
+}
+
+function setupAuth() {
+  const screen = document.getElementById('auth-screen');
+  const input  = document.getElementById('auth-input');
+  const btn    = document.getElementById('auth-btn');
+  const err    = document.getElementById('auth-error');
+
+  // 既に認証済みならスクリーンを即非表示
+  if (checkAuth()) {
+    screen.classList.add('hidden');
+    return;
+  }
+
+  // 認証試行
+  function attempt() {
+    if (input.value === PASSWORD) {
+      sessionStorage.setItem(AUTH_KEY, '1');
+      screen.style.animation = 'fadeOut .2s ease forwards';
+      setTimeout(() => screen.classList.add('hidden'), 200);
+    } else {
+      input.classList.add('error');
+      err.classList.add('show');
+      input.value = '';
+      setTimeout(() => {
+        input.classList.remove('error');
+        err.classList.remove('show');
+      }, 1600);
+    }
+  }
+
+  btn.addEventListener('click', attempt);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') attempt(); });
+
+  // フォーカス
+  setTimeout(() => input.focus(), 50);
+}
+
+/* ================================================================
+   INIT
+================================================================ */
+function init() {
+  setupAuth();
+  initGrid();
+  buildGrid();
+  wireEvents();
+  renderStats();
+  renderSidePanel(null);
+
+  // Show BTN Standard on load so there's something to interact with
+  applyPreset('BTN', 'Standard');
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
