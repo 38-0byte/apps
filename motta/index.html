@@ -1,1 +1,1256 @@
-<h1>motta</h1>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>motta?</title>
+<style>
+  :root {
+    --bg: #0b0f14;
+    --main: #6EE7FF;
+    --accent: #38BDF8;
+    --card-bg: rgba(255,255,255,0.05);
+    --card-border: rgba(110,231,255,0.15);
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --glow-sm: 0 0 10px rgba(110,231,255,.5), 0 0 20px rgba(110,231,255,.3);
+    --glow-md: 0 0 15px rgba(110,231,255,.6), 0 0 30px rgba(110,231,255,.4), 0 0 60px rgba(110,231,255,.2);
+    --danger: #ff6b8a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ===== LOADING ===== */
+  #loading-screen {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 9999;
+    transition: opacity 0.4s ease;
+  }
+  #loading-screen.fade-out { opacity: 0; pointer-events: none; }
+  .loading-logo {
+    font-size: 3rem; font-weight: 900;
+    color: var(--main); text-shadow: var(--glow-md);
+    letter-spacing: 0.1em; margin-bottom: 1.5rem;
+    animation: pulse-glow 1.5s ease-in-out infinite;
+  }
+  .loading-msg {
+    font-size: 0.9rem; color: var(--main);
+    opacity: 0.8; letter-spacing: 0.05em;
+    animation: blink 0.8s ease-in-out infinite;
+  }
+  .loading-dots::after {
+    content: '';
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+  @keyframes dots {
+    0%  { content: ''; }
+    25% { content: '・'; }
+    50% { content: '・・'; }
+    75% { content: '・・・'; }
+  }
+  @keyframes pulse-glow {
+    0%, 100% { text-shadow: 0 0 15px rgba(110,231,255,.6), 0 0 30px rgba(110,231,255,.4); }
+    50%       { text-shadow: 0 0 25px rgba(110,231,255,.9), 0 0 50px rgba(110,231,255,.6), 0 0 80px rgba(110,231,255,.3); }
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 0.8; }
+    50%       { opacity: 0.3; }
+  }
+
+  /* ===== APP ===== */
+  #app {
+    max-width: 480px; margin: 0 auto; padding: 1rem;
+    opacity: 0; transition: opacity 0.4s ease;
+  }
+  #app.visible { opacity: 1; }
+
+  /* ===== HEADER ===== */
+  .app-header { text-align: center; padding: 2rem 0 1.5rem; }
+  .app-title {
+    font-size: 2.8rem; font-weight: 900;
+    color: var(--main); text-shadow: var(--glow-md);
+    letter-spacing: 0.15em; line-height: 1;
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+  .app-subtitle { font-size: 0.85rem; color: var(--text-dim); margin-top: 0.4rem; letter-spacing: 0.1em; }
+
+  /* ===== SECTION ===== */
+  .section { margin-bottom: 1.5rem; }
+  .section-title {
+    font-size: 0.75rem; font-weight: 700;
+    color: var(--main); letter-spacing: 0.15em;
+    margin-bottom: 0.75rem;
+    border-left: 2px solid var(--main); padding-left: 0.5rem;
+    text-shadow: 0 0 8px rgba(110,231,255,.5);
+  }
+
+  /* ===== SELECT CARDS ===== */
+  .cards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+  .select-card {
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: 12px; padding: 0.9rem 0.5rem; text-align: center;
+    cursor: pointer; transition: all 0.2s ease;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+  .select-card:hover, .select-card:active {
+    border-color: var(--main); box-shadow: var(--glow-sm);
+    background: rgba(110,231,255,0.08);
+  }
+  .select-card.selected {
+    border-color: var(--main); background: rgba(110,231,255,0.12);
+    box-shadow: var(--glow-sm);
+  }
+  .select-card .card-emoji { font-size: 1.6rem; display: block; margin-bottom: 0.3rem; }
+  .select-card .card-label { font-size: 0.72rem; font-weight: 600; color: var(--text); line-height: 1.3; }
+  .select-card.selected .card-label { color: var(--main); }
+
+  /* ===== LAST SESSION ===== */
+  /* ===== PROGRESS ===== */
+  .progress-area {
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: 12px; padding: 1rem;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  }
+  .progress-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.6rem; }
+  .progress-label { font-size: 0.75rem; color: var(--text-dim); }
+  .progress-pct { font-size: 1.4rem; font-weight: 900; color: var(--main); text-shadow: 0 0 10px rgba(110,231,255,.6); }
+  .progress-bar-track { height: 6px; background: rgba(255,255,255,0.08); border-radius: 99px; overflow: hidden; }
+  .progress-bar-fill {
+    height: 100%; background: linear-gradient(90deg, var(--accent), var(--main));
+    border-radius: 99px; transition: width 0.4s ease;
+    box-shadow: 0 0 8px rgba(110,231,255,.6);
+  }
+
+  /* ===== CHECKLIST ===== */
+  .checklist {
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: 12px; overflow: hidden;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  }
+  .check-group-header {
+    padding: 0.6rem 1rem;
+    background: rgba(110,231,255,0.05); border-bottom: 1px solid var(--card-border);
+    font-size: 0.7rem; font-weight: 700; color: var(--main);
+    letter-spacing: 0.1em; text-shadow: 0 0 6px rgba(110,231,255,.4);
+  }
+  .check-item {
+    display: flex; align-items: center;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    cursor: pointer; transition: background 0.15s ease;
+    -webkit-tap-highlight-color: transparent; user-select: none;
+  }
+  .check-item:last-child { border-bottom: none; }
+  .check-item:hover, .check-item:active { background: rgba(110,231,255,0.05); }
+  .check-item.checked { opacity: 0.5; }
+  .check-item.checked .check-label { text-decoration: line-through; color: var(--text-dim); }
+  .check-box {
+    width: 22px; height: 22px; border: 2px solid var(--card-border);
+    border-radius: 6px; margin-right: 0.75rem; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s ease;
+  }
+  .check-item.checked .check-box { background: var(--main); border-color: var(--main); box-shadow: 0 0 8px rgba(110,231,255,.5); }
+  .check-box-inner {
+    width: 10px; height: 6px;
+    border-left: 2px solid var(--bg); border-bottom: 2px solid var(--bg);
+    transform: rotate(-45deg) translateY(-1px);
+    opacity: 0; transition: opacity 0.15s ease;
+  }
+  .check-item.checked .check-box-inner { opacity: 1; }
+  .check-label { font-size: 0.9rem; flex: 1; }
+
+  /* ===== RESET BUTTON ===== */
+  .btn-reset {
+    width: 100%; padding: 0.7rem;
+    background: transparent; border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 10px; color: var(--text-dim);
+    font-size: 0.8rem; cursor: pointer; transition: all 0.2s ease;
+    margin-top: 0.75rem; -webkit-tap-highlight-color: transparent;
+  }
+  .btn-reset:hover { border-color: rgba(255,255,255,0.3); color: var(--text); }
+
+  /* ===== CUSTOM ITEM FORM ===== */
+  .custom-form {
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: 12px; padding: 1rem;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  }
+  .custom-form.edit-mode { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(56,189,248,0.2); }
+  .form-row { margin-bottom: 0.9rem; }
+  .form-row:last-child { margin-bottom: 0; }
+  .form-label {
+    display: block; font-size: 0.7rem; font-weight: 700;
+    color: var(--text-dim); letter-spacing: 0.08em; margin-bottom: 0.45rem;
+  }
+  .name-input {
+    width: 100%; background: rgba(255,255,255,0.04);
+    border: 1px solid var(--card-border); border-radius: 8px;
+    padding: 0.65rem 0.9rem; color: var(--text);
+    font-size: 0.9rem; outline: none; transition: border-color 0.2s ease;
+    font-family: inherit;
+  }
+  .name-input:focus { border-color: var(--main); box-shadow: 0 0 0 2px rgba(110,231,255,0.15); }
+  .name-input::placeholder { color: var(--text-dim); }
+
+  /* Checkbox grid for venue/travel */
+  .cb-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+  .cb-item {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.5rem 0.7rem;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 8px; cursor: pointer;
+    transition: all 0.15s ease; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .cb-item:hover { border-color: var(--card-border); background: rgba(110,231,255,0.04); }
+  .cb-item.checked { border-color: var(--main); background: rgba(110,231,255,0.1); }
+  .cb-box {
+    width: 16px; height: 16px; flex-shrink: 0;
+    border: 1.5px solid rgba(255,255,255,0.2); border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s ease;
+  }
+  .cb-item.checked .cb-box { background: var(--main); border-color: var(--main); }
+  .cb-box-inner {
+    width: 8px; height: 5px;
+    border-left: 1.5px solid var(--bg); border-bottom: 1.5px solid var(--bg);
+    transform: rotate(-45deg) translateY(-1px);
+    opacity: 0; transition: opacity 0.1s ease;
+  }
+  .cb-item.checked .cb-box-inner { opacity: 1; }
+  .cb-label { font-size: 0.75rem; color: var(--text); line-height: 1.3; }
+  .cb-item.checked .cb-label { color: var(--main); font-weight: 600; }
+
+  .form-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+  .btn-form-submit {
+    flex: 1; padding: 0.7rem;
+    background: var(--main); border: none; border-radius: 8px;
+    color: var(--bg); font-size: 0.85rem; font-weight: 800;
+    cursor: pointer; transition: all 0.2s ease; letter-spacing: 0.05em;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-form-submit:hover { box-shadow: var(--glow-sm); filter: brightness(1.1); }
+  .btn-form-cancel {
+    padding: 0.7rem 1rem;
+    background: transparent; border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px; color: var(--text-dim);
+    font-size: 0.85rem; cursor: pointer; transition: all 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-form-cancel:hover { border-color: rgba(255,255,255,0.3); color: var(--text); }
+
+  /* error shake */
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-6px); }
+    40%, 80% { transform: translateX(6px); }
+  }
+  .shake { animation: shake 0.35s ease; }
+
+  /* Category radio group */
+  .radio-group { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.4rem; }
+  .radio-item {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 0.55rem 0.4rem; text-align: center;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 8px; cursor: pointer;
+    transition: all 0.15s ease; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    font-size: 0.78rem; color: var(--text); line-height: 1.3; gap: 0.2rem;
+  }
+  .radio-item:hover { border-color: var(--card-border); background: rgba(110,231,255,0.04); }
+  .radio-item.selected { border-color: var(--main); background: rgba(110,231,255,0.12); color: var(--main); font-weight: 700; }
+  .radio-hint { font-size: 0.62rem; color: var(--text-dim); font-weight: 400; }
+  .radio-item.selected .radio-hint { color: rgba(110,231,255,0.6); }
+
+  /* ===== CUSTOM MANAGEMENT LIST ===== */
+  .custom-mgmt-list { display: flex; flex-direction: column; gap: 0.45rem; }
+  .custom-mgmt-item {
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: 10px; overflow: hidden;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    transition: border-color 0.15s ease;
+  }
+  .custom-mgmt-item.editing { border-color: var(--accent); }
+  .custom-mgmt-row {
+    display: flex; align-items: center; padding: 0.7rem 0.9rem; gap: 0.5rem;
+  }
+  .custom-mgmt-name { flex: 1; font-size: 0.9rem; font-weight: 600; }
+  .custom-mgmt-tags {
+    font-size: 0.65rem; color: var(--text-dim);
+    display: flex; flex-wrap: wrap; gap: 0.25rem; margin: 0 0.5rem 0 0;
+  }
+  .tag {
+    background: rgba(110,231,255,0.08); border: 1px solid rgba(110,231,255,0.15);
+    border-radius: 4px; padding: 0.1rem 0.4rem; white-space: nowrap;
+  }
+  .custom-mgmt-actions { display: flex; gap: 0.3rem; flex-shrink: 0; }
+  .btn-icon {
+    background: none; border: none; cursor: pointer;
+    font-size: 0.85rem; padding: 0.3rem 0.45rem;
+    border-radius: 6px; transition: all 0.15s ease; line-height: 1;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-icon-edit { color: var(--accent); }
+  .btn-icon-edit:hover { background: rgba(56,189,248,0.12); }
+  .btn-icon-del { color: rgba(255,255,255,0.25); }
+  .btn-icon-del:hover { color: var(--danger); background: rgba(255,107,138,0.1); }
+
+  /* inline edit form inside management item */
+  .custom-mgmt-editform { padding: 0 0.9rem 0.9rem; }
+
+  /* ===== TEMPLATES ===== */
+  .template-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .template-item {
+    display: flex; align-items: center;
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: 10px; overflow: hidden;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  }
+  .btn-template-load {
+    flex: 1; padding: 0.75rem 1rem;
+    background: none; border: none; color: var(--text);
+    font-size: 0.85rem; text-align: left; cursor: pointer;
+    transition: all 0.15s ease; font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-template-load:hover { color: var(--main); }
+  .template-meta { font-size: 0.7rem; color: var(--text-dim); display: block; margin-top: 0.15rem; }
+  .btn-template-del {
+    padding: 0.75rem 0.9rem; background: none; border: none;
+    border-left: 1px solid var(--card-border);
+    color: rgba(255,255,255,0.2); font-size: 1rem;
+    cursor: pointer; transition: all 0.15s ease; -webkit-tap-highlight-color: transparent;
+  }
+  .btn-template-del:hover { color: var(--danger); background: rgba(255,107,138,0.07); }
+  .template-save-area { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+  .template-name-input {
+    flex: 1; background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: 8px; padding: 0.65rem 0.9rem; color: var(--text);
+    font-size: 0.85rem; outline: none; transition: border-color 0.2s ease; font-family: inherit;
+  }
+  .template-name-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(56,189,248,0.15); }
+  .template-name-input::placeholder { color: var(--text-dim); }
+  .btn-save-template {
+    background: transparent; border: 1px solid var(--accent);
+    border-radius: 8px; padding: 0.65rem 1rem;
+    color: var(--accent); font-size: 0.8rem; font-weight: 700;
+    cursor: pointer; white-space: nowrap; transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-save-template:hover { background: rgba(56,189,248,0.1); box-shadow: 0 0 10px rgba(56,189,248,.4); }
+
+  /* ===== EMPTY STATE ===== */
+  .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--text-dim); }
+  .empty-state-icon { font-size: 2.5rem; margin-bottom: 0.75rem; display: block; }
+  .empty-state p { font-size: 0.85rem; line-height: 1.6; }
+  .empty-state-sm { text-align: center; padding: 1.2rem; color: var(--text-dim); font-size: 0.8rem; }
+
+  /* ===== COMPLETE MODAL ===== */
+  #complete-modal {
+    display: none; position: fixed; inset: 0;
+    background: rgba(11,15,20,0.92);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    z-index: 999; align-items: center; justify-content: center; padding: 2rem;
+  }
+  #complete-modal.show { display: flex; }
+  .modal-content { text-align: center; animation: modal-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+  @keyframes modal-in {
+    from { transform: scale(0.7); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+  }
+  .modal-stars { font-size: 2.5rem; animation: spin-glow 2s ease-in-out infinite; display: block; margin-bottom: 1rem; }
+  @keyframes spin-glow {
+    0%, 100% { transform: rotate(-5deg) scale(1); filter: brightness(1); }
+    50%       { transform: rotate(5deg) scale(1.1); filter: brightness(1.3); }
+  }
+  .modal-title {
+    font-size: 2.2rem; font-weight: 900; color: var(--main); text-shadow: var(--glow-md);
+    letter-spacing: 0.1em; animation: pulse-glow 1s ease-in-out infinite; line-height: 1.2; margin-bottom: 0.5rem;
+  }
+  .modal-sub { font-size: 1.1rem; color: var(--text); margin-bottom: 0.25rem; letter-spacing: 0.05em; }
+  .modal-go {
+    font-size: 1.5rem; font-weight: 900; color: var(--main);
+    text-shadow: 0 0 15px rgba(110,231,255,.8); margin: 1rem 0 1.5rem; letter-spacing: 0.1em;
+    animation: go-pulse 0.6s ease-in-out infinite alternate;
+  }
+  @keyframes go-pulse {
+    from { text-shadow: 0 0 10px rgba(110,231,255,.6); }
+    to   { text-shadow: 0 0 25px rgba(110,231,255,1), 0 0 50px rgba(110,231,255,.7); }
+  }
+  .neon-particles { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .particle {
+    position: absolute; width: 4px; height: 4px;
+    background: var(--main); border-radius: 50%;
+    box-shadow: 0 0 6px rgba(110,231,255,.8);
+    animation: float-up linear infinite;
+  }
+  @keyframes float-up {
+    from { transform: translateY(100vh) scale(0); opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    to   { transform: translateY(-20vh) scale(1.5); opacity: 0; }
+  }
+  .btn-modal-close {
+    padding: 0.8rem 2rem; background: transparent;
+    border: 2px solid var(--main); border-radius: 12px; color: var(--main);
+    font-size: 0.9rem; font-weight: 700; cursor: pointer;
+    box-shadow: var(--glow-sm); transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent; position: relative; z-index: 1; letter-spacing: 0.08em;
+  }
+  .btn-modal-close:hover { background: rgba(110,231,255,0.1); box-shadow: var(--glow-md); }
+
+  /* ===== INLINE EDIT ROW ===== */
+  .check-item.editing {
+    padding: 0.55rem 0.75rem;
+    background: rgba(110,231,255,0.06);
+    border-bottom-color: rgba(110,231,255,0.12);
+    cursor: default;
+    align-items: center; gap: 0.4rem;
+  }
+  .inline-edit-input {
+    flex: 1; background: rgba(255,255,255,0.06);
+    border: 1px solid var(--main); border-radius: 6px;
+    padding: 0.35rem 0.6rem; color: var(--text);
+    font-size: 0.88rem; outline: none; font-family: inherit;
+    min-width: 0;
+  }
+  .btn-inline-save {
+    background: var(--main); border: none; border-radius: 6px;
+    padding: 0.35rem 0.6rem; color: var(--bg);
+    font-size: 0.78rem; font-weight: 800; cursor: pointer;
+    white-space: nowrap; flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-inline-cancel {
+    background: transparent; border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 6px; padding: 0.35rem 0.5rem;
+    color: var(--text-dim); font-size: 0.78rem; cursor: pointer;
+    flex-shrink: 0; -webkit-tap-highlight-color: transparent;
+  }
+  .btn-inline-save:hover  { box-shadow: var(--glow-sm); }
+  .btn-inline-cancel:hover { color: var(--text); border-color: rgba(255,255,255,0.3); }
+
+  /* ===== AUTH SCREEN ===== */
+  #auth-screen {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 99999;
+    padding: 2rem;
+    transition: opacity 0.35s ease;
+  }
+  #auth-screen.fade-out { opacity: 0; pointer-events: none; }
+  .auth-logo {
+    font-size: 3rem; font-weight: 900;
+    color: var(--main); text-shadow: var(--glow-md);
+    letter-spacing: 0.15em; margin-bottom: 0.4rem;
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+  .auth-tagline {
+    font-size: 0.8rem; color: var(--text-dim);
+    letter-spacing: 0.12em; margin-bottom: 2.5rem;
+  }
+  .auth-card {
+    width: 100%; max-width: 320px;
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: 16px; padding: 1.75rem 1.5rem;
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    text-align: center;
+  }
+  .auth-label {
+    font-size: 0.75rem; font-weight: 700; color: var(--text-dim);
+    letter-spacing: 0.12em; margin-bottom: 1rem; display: block;
+  }
+  .auth-input-row { display: flex; gap: 0.6rem; justify-content: center; margin-bottom: 1.25rem; }
+  .auth-digit {
+    width: 52px; height: 60px;
+    background: rgba(255,255,255,0.04); border: 1.5px solid var(--card-border);
+    border-radius: 10px; color: var(--main);
+    font-size: 1.6rem; font-weight: 900; text-align: center;
+    outline: none; caret-color: var(--main);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    font-family: inherit; letter-spacing: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .auth-digit:focus { border-color: var(--main); box-shadow: var(--glow-sm); }
+  .auth-digit.filled { border-color: rgba(110,231,255,0.4); }
+  .auth-error {
+    font-size: 0.75rem; color: var(--danger);
+    min-height: 1.1em; margin-bottom: 1rem;
+    animation: shake 0.35s ease;
+  }
+  .btn-auth {
+    width: 100%; padding: 0.8rem;
+    background: var(--main); border: none; border-radius: 10px;
+    color: var(--bg); font-size: 0.9rem; font-weight: 900;
+    cursor: pointer; letter-spacing: 0.08em;
+    transition: all 0.2s ease; -webkit-tap-highlight-color: transparent;
+  }
+  .btn-auth:hover, .btn-auth:active { box-shadow: var(--glow-sm); filter: brightness(1.08); }
+
+  /* ===== MISC ===== */
+  .divider { height: 1px; background: linear-gradient(90deg, transparent, var(--card-border), transparent); margin: 1.5rem 0; }
+  .app-footer { text-align: center; padding: 2rem 1rem 3rem; font-size: 0.7rem; color: rgba(255,255,255,0.15); letter-spacing: 0.1em; }
+  .hidden { display: none !important; }
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    #app { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
+  }
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <div class="auth-logo">motta?</div>
+  <div class="auth-tagline">現場前の最終確認</div>
+  <div class="auth-card">
+    <span class="auth-label">パスワードを入力</span>
+    <div class="auth-input-row">
+      <input class="auth-digit" id="d0" type="password" inputmode="numeric" maxlength="1" pattern="[0-9]">
+      <input class="auth-digit" id="d1" type="password" inputmode="numeric" maxlength="1" pattern="[0-9]">
+      <input class="auth-digit" id="d2" type="password" inputmode="numeric" maxlength="1" pattern="[0-9]">
+      <input class="auth-digit" id="d3" type="password" inputmode="numeric" maxlength="1" pattern="[0-9]">
+    </div>
+    <div class="auth-error" id="auth-error"></div>
+    <button class="btn-auth" id="btn-auth">開錠</button>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div id="loading-screen" style="display:none;">
+  <div class="loading-logo">motta?</div>
+  <div class="loading-msg" id="loading-msg"><span class="loading-dots"></span></div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header class="app-header">
+    <div class="app-title">motta?</div>
+    <div class="app-subtitle">現場前の最終確認</div>
+  </header>
+
+  <!-- 現場タイプ -->
+  <div class="section">
+    <div class="section-title">現場タイプ</div>
+    <div class="cards-grid" id="venue-grid">
+      <div class="select-card" data-venue="idol"><span class="card-emoji">🎤</span><span class="card-label">アイドルライブ</span></div>
+      <div class="select-card" data-venue="comedy"><span class="card-emoji">🤣</span><span class="card-label">お笑いライブ</span></div>
+      <div class="select-card" data-venue="stage"><span class="card-emoji">🎭</span><span class="card-label">舞台</span></div>
+      <div class="select-card" data-venue="fes"><span class="card-emoji">🎪</span><span class="card-label">フェス</span></div>
+      <div class="select-card" data-venue="tokuten"><span class="card-emoji">🤝</span><span class="card-label">特典会</span></div>
+    </div>
+  </div>
+
+  <!-- 移動タイプ -->
+  <div class="section">
+    <div class="section-title">移動タイプ</div>
+    <div class="cards-grid" id="travel-grid">
+      <div class="select-card" data-travel="remote"><span class="card-emoji">✈️</span><span class="card-label">遠征</span></div>
+      <div class="select-card" data-travel="local"><span class="card-emoji">🏠</span><span class="card-label">地元</span></div>
+    </div>
+  </div>
+
+  <!-- チェックリスト -->
+  <div class="section" id="checklist-section">
+    <div class="section-title">チェックリスト</div>
+    <div id="checklist-area">
+      <div class="empty-state">
+        <span class="empty-state-icon">✨</span>
+        <p>現場タイプと移動タイプを<br>選択してください</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 準備率 -->
+  <div class="section hidden" id="progress-section">
+    <div class="progress-area">
+      <div class="progress-header">
+        <span class="progress-label">準備率</span>
+        <span class="progress-pct" id="progress-pct">0%</span>
+      </div>
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="progress-bar" style="width:0%"></div>
+      </div>
+    </div>
+    <button class="btn-reset" id="btn-reset-checks">チェックをリセット</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- カスタム持ち物を追加 -->
+  <div class="section">
+    <div class="section-title">カスタム持ち物を追加</div>
+    <div class="custom-form" id="custom-form">
+      <div class="form-row">
+        <label class="form-label">持ち物名</label>
+        <input type="text" class="name-input" id="custom-name-input" placeholder="例：痛バ、ぬい服、ヘアアイロン…" maxlength="30">
+        <div id="custom-name-error" style="font-size:0.7rem;color:var(--danger);margin-top:0.3rem;display:none;"></div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">追加先</label>
+        <div class="radio-group" id="form-category-group">
+          <div class="radio-item selected" data-val="common">共通必須<span class="radio-hint">常に表示</span></div>
+          <div class="radio-item" data-val="venue">現場タイプ<span class="radio-hint">選択して絞込</span></div>
+          <div class="radio-item" data-val="travel">移動タイプ<span class="radio-hint">選択して絞込</span></div>
+        </div>
+      </div>
+      <div class="form-row hidden" id="form-venue-row">
+        <label class="form-label">現場タイプを選択（複数可）</label>
+        <div class="cb-grid" id="form-venue-grid">
+          <div class="cb-item" data-val="idol"><div class="cb-box"><div class="cb-box-inner"></div></div><span class="cb-label">🎤 アイドルライブ</span></div>
+          <div class="cb-item" data-val="comedy"><div class="cb-box"><div class="cb-box-inner"></div></div><span class="cb-label">🤣 お笑いライブ</span></div>
+          <div class="cb-item" data-val="stage"><div class="cb-box"><div class="cb-box-inner"></div></div><span class="cb-label">🎭 舞台</span></div>
+          <div class="cb-item" data-val="fes"><div class="cb-box"><div class="cb-box-inner"></div></div><span class="cb-label">🎪 フェス</span></div>
+          <div class="cb-item" data-val="tokuten"><div class="cb-box"><div class="cb-box-inner"></div></div><span class="cb-label">🤝 特典会</span></div>
+        </div>
+      </div>
+      <div class="form-row hidden" id="form-travel-row">
+        <label class="form-label">移動タイプを選択（複数可）</label>
+        <div class="cb-grid" id="form-travel-grid">
+          <div class="cb-item" data-val="remote"><div class="cb-box"><div class="cb-box-inner"></div></div><span class="cb-label">✈️ 遠征</span></div>
+          <div class="cb-item" data-val="local"><div class="cb-box"><div class="cb-box-inner"></div></div><span class="cb-label">🏠 地元</span></div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-form-submit" id="btn-custom-submit">追加する</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- テンプレート -->
+  <div class="section">
+    <div class="section-title">テンプレート</div>
+    <div class="template-list" id="template-list"></div>
+    <div class="template-save-area">
+      <input type="text" class="template-name-input" id="template-name-input" placeholder="テンプレート名（例：IMP.ライブ）" maxlength="20">
+      <button class="btn-save-template" id="btn-save-template">保存</button>
+    </div>
+  </div>
+
+  <footer class="app-footer">持った？ — 現場前の最終確認アプリ</footer>
+</div>
+
+<!-- 完了モーダル -->
+<div id="complete-modal">
+  <div class="neon-particles" id="particles"></div>
+  <div class="modal-content">
+    <span class="modal-stars">✨🌟✨</span>
+    <div class="modal-title">準備完了</div>
+    <div class="modal-sub">持った？</div>
+    <div class="modal-sub">持ったな？</div>
+    <div class="modal-go">行ってこい！！！</div>
+    <button class="btn-modal-close" id="btn-modal-close">とじる</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ===== CONSTANTS =====
+  const LOADING_MSGS = [
+    '現場モード起動中', 'ペンラの存在確認中', 'オタク人格を読み込み中',
+    '推しへの愛を計測中', '忘れ物センサー起動', 'テンションを上げています',
+    'ドルオタモードON', 'チケットの念を込めています',
+  ];
+
+  const ITEMS = {
+    common:  ['チケット', 'スマホ', '財布', '身分証', 'モバイルバッテリー', '交通系IC'],
+    idol:    ['ペンライト', 'ペンラ電池', 'うちわ', '双眼鏡', 'アクスタ', 'トレカ', '銀テケース', 'ぬい'],
+    comedy:  ['双眼鏡', 'メモ帳', 'ボールペン', 'プレゼント', 'ファンレター', 'グッズ代'],
+    stage:   ['双眼鏡', 'オペラグラス', '羽織', 'のど飴', 'パンフ代'],
+    fes:     ['タオル', '帽子', '日焼け止め', 'レインコート', '飲み物', '着替え', 'レジャーシート'],
+    tokuten: ['プレゼント', 'ファンレター', 'トレカ', 'チェキ券', '身だしなみチェック'],
+    remote:  ['着替え', 'ホテル予約確認', '交通チケット', '充電器', '常備薬', 'キャリーケース', '洗面用品'],
+    local:   [],
+  };
+
+  const VENUE_LABELS = {
+    idol: '🎤 アイドルライブ', comedy: '🤣 お笑いライブ',
+    stage: '🎭 舞台', fes: '🎪 フェス', tokuten: '🤝 特典会',
+  };
+  const TRAVEL_LABELS = { remote: '✈️ 遠征', local: '🏠 地元' };
+  const ALL_VENUES = ['idol', 'comedy', 'stage', 'fes', 'tokuten'];
+  const ALL_TRAVELS = ['remote', 'local'];
+
+  // ===== STATE =====
+  let state = {
+    venue: null, travel: null,
+    checks: {},
+    customs: [],
+    templates: [],
+    deletedItems: {},  // { originalName: true }
+    renamedItems: {},  // { originalName: newName }
+  };
+
+  // ===== STORAGE =====
+  const STORAGE_KEY = 'motta_v3';
+  const LEGACY_KEY = 'motta_v2';
+
+  function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const p = JSON.parse(raw);
+        state = { ...state, ...p };
+        // ensure customs is new format
+        state.customs = (state.customs || []).map(normalizeCustom).filter(Boolean);
+        return;
+      }
+      // migrate from v2
+      const legacy = localStorage.getItem(LEGACY_KEY);
+      if (legacy) {
+        const p = JSON.parse(legacy);
+        state.venue = p.venue || null;
+        state.travel = p.travel || null;
+        state.checks = p.checks || {};
+        state.templates = (p.templates || []).map(t => ({
+          name: t.name, venue: t.venue, travel: t.travel,
+        }));
+        // migrate flat string customs -> apply to all venues/travels
+        if (Array.isArray(p.customs) && p.customs.length) {
+          state.customs = p.customs.map(name =>
+            typeof name === 'string'
+              ? { id: genId(), name, venues: [...ALL_VENUES], travels: [...ALL_TRAVELS] }
+              : normalizeCustom(name)
+          ).filter(Boolean);
+        }
+      }
+    } catch (e) {}
+  }
+
+  function normalizeCustom(c) {
+    if (!c || typeof c !== 'object' || !c.name) return null;
+    // Determine category: new format has explicit `category`, old format had venues+travels
+    let category = c.category;
+    if (!category) {
+      // migrate: if all venues & all travels → common, if only venues set → venue, if only travels → travel
+      const hasVenues = Array.isArray(c.venues) && c.venues.length < ALL_VENUES.length;
+      const hasTravels = Array.isArray(c.travels) && c.travels.length < ALL_TRAVELS.length;
+      if (hasVenues) category = 'venue';
+      else if (hasTravels) category = 'travel';
+      else category = 'common';
+    }
+    return {
+      id: c.id || genId(),
+      name: String(c.name),
+      category,
+      venues: Array.isArray(c.venues) ? c.venues : [...ALL_VENUES],
+      travels: Array.isArray(c.travels) ? c.travels : [...ALL_TRAVELS],
+    };
+  }
+
+  function genId() { return 'c' + Math.random().toString(36).slice(2, 9); }
+
+  // ===== HELPERS =====
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function getActiveCustoms() {
+    if (!state.venue || !state.travel) return [];
+    return state.customs.filter(c => {
+      if (c.category === 'common') return true;
+      if (c.category === 'venue') return c.venues.includes(state.venue);
+      if (c.category === 'travel') return c.travels.includes(state.travel);
+      return false;
+    });
+  }
+
+  // ===== CHECKLIST =====
+  function renderChecklist() {
+    const area = document.getElementById('checklist-area');
+    const progressSection = document.getElementById('progress-section');
+
+    if (!state.venue || !state.travel) {
+      area.innerHTML = `<div class="empty-state">
+        <span class="empty-state-icon">✨</span>
+        <p>現場タイプと移動タイプを<br>選択してください</p>
+      </div>`;
+      progressSection.classList.add('hidden');
+      return;
+    }
+    progressSection.classList.remove('hidden');
+
+    const commonCustoms = state.customs.filter(c => c.category === 'common');
+    const venueCustoms  = state.customs.filter(c => c.category === 'venue'  && c.venues.includes(state.venue));
+    const travelCustoms = state.customs.filter(c => c.category === 'travel' && c.travels.includes(state.travel));
+
+    const seen = new Set([...ITEMS.common, ...(ITEMS[state.venue] || [])]);
+    const travelItems = state.travel === 'remote' ? ITEMS.remote.filter(i => !seen.has(i)) : [];
+
+    const groups = [
+      { label: '共通必須',             builtIn: ITEMS.common,               customs: commonCustoms },
+      { label: VENUE_LABELS[state.venue], builtIn: (ITEMS[state.venue] || []).filter(i => !ITEMS.common.includes(i)), customs: venueCustoms },
+      { label: TRAVEL_LABELS.remote,   builtIn: travelItems,                customs: travelCustoms },
+    ];
+
+    let html = '<div class="checklist">';
+    for (const g of groups) {
+      const visibleBuiltIn = g.builtIn.filter(item => !state.deletedItems[item]);
+      if (!visibleBuiltIn.length && !g.customs.length) continue;
+      html += `<div class="check-group-header">${escapeHtml(g.label)}</div>`;
+      for (const item of visibleBuiltIn) {
+        const label = state.renamedItems[item] || item;
+        html += renderCheckItem('item_' + item, label, !!state.checks['item_' + item], null, item);
+      }
+      for (const c of g.customs) {
+        html += renderCheckItem('custom_' + c.id, c.name, !!state.checks['custom_' + c.id], c.id, null);
+      }
+    }
+    html += '</div>';
+    area.innerHTML = html;
+
+    area.querySelectorAll('.check-item').forEach(el => {
+      el.addEventListener('click', e => {
+        if (e.target.closest('.btn-icon')) return;
+        const id = el.dataset.id;
+        state.checks[id] = !state.checks[id];
+        save();
+        el.classList.toggle('checked', !!state.checks[id]);
+        updateProgress();
+        checkAllComplete();
+      });
+    });
+
+    area.querySelectorAll('.btn-icon-edit:not(.btn-builtin-edit)').forEach(btn => {
+      btn.addEventListener('click', e => { e.stopPropagation(); enterEditMode(btn.dataset.cid); });
+    });
+    area.querySelectorAll('.btn-icon-del:not(.btn-builtin-del)').forEach(btn => {
+      btn.addEventListener('click', e => { e.stopPropagation(); deleteCustom(btn.dataset.cid); });
+    });
+
+    area.querySelectorAll('.btn-builtin-edit').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const originalName = btn.dataset.name;
+        const row = btn.closest('.check-item');
+        const currentLabel = state.renamedItems[originalName] || originalName;
+        row.classList.add('editing');
+        row.innerHTML = `
+          <input class="inline-edit-input" value="${escapeHtml(currentLabel)}" maxlength="30">
+          <button class="btn-inline-save">保存</button>
+          <button class="btn-inline-cancel">✕</button>`;
+        const input = row.querySelector('.inline-edit-input');
+        input.focus();
+        input.select();
+        row.querySelector('.btn-inline-save').addEventListener('click', () => {
+          const newName = input.value.trim();
+          if (!newName) return;
+          if (newName === originalName) { delete state.renamedItems[originalName]; }
+          else { state.renamedItems[originalName] = newName; }
+          save(); renderChecklist();
+        });
+        row.querySelector('.btn-inline-cancel').addEventListener('click', () => renderChecklist());
+        input.addEventListener('keydown', e => {
+          if (e.key === 'Enter') row.querySelector('.btn-inline-save').click();
+          if (e.key === 'Escape') renderChecklist();
+        });
+      });
+    });
+
+    area.querySelectorAll('.btn-builtin-del').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const originalName = btn.dataset.name;
+        const label = state.renamedItems[originalName] || originalName;
+        if (!confirm(`「${label}」を削除しますか？`)) return;
+        state.deletedItems[originalName] = true;
+        delete state.checks['item_' + originalName];
+        save(); renderChecklist(); updateProgress();
+      });
+    });
+
+    updateProgress();
+  }
+
+  function renderCheckItem(id, label, checked, customId, builtinName) {
+    let actions = '';
+    if (customId) {
+      actions = `
+        <button class="btn-icon btn-icon-edit" data-cid="${escapeHtml(customId)}" title="編集">✏️</button>
+        <button class="btn-icon btn-icon-del"  data-cid="${escapeHtml(customId)}" title="削除">🗑</button>`;
+    } else if (builtinName) {
+      actions = `
+        <button class="btn-icon btn-icon-edit btn-builtin-edit" data-name="${escapeHtml(builtinName)}" title="編集">✏️</button>
+        <button class="btn-icon btn-icon-del  btn-builtin-del"  data-name="${escapeHtml(builtinName)}" title="削除">🗑</button>`;
+    }
+    return `<div class="check-item${checked ? ' checked' : ''}" data-id="${escapeHtml(id)}">
+      <div class="check-box"><div class="check-box-inner"></div></div>
+      <span class="check-label">${escapeHtml(label)}</span>
+      ${actions}
+    </div>`;
+  }
+
+  function updateProgress() {
+    const items = document.querySelectorAll('.check-item');
+    if (!items.length) return;
+    const pct = Math.round(document.querySelectorAll('.check-item.checked').length / items.length * 100);
+    document.getElementById('progress-pct').textContent = pct + '%';
+    document.getElementById('progress-bar').style.width = pct + '%';
+  }
+
+  function checkAllComplete() {
+    const items = document.querySelectorAll('.check-item');
+    if (!items.length) return;
+    if (document.querySelectorAll('.check-item.checked').length === items.length) {
+      setTimeout(showCompleteModal, 400);
+    }
+  }
+
+  document.getElementById('btn-reset-checks').addEventListener('click', () => {
+    if (!confirm('チェックをリセットしますか？')) return;
+    state.checks = {};
+    save();
+    renderChecklist();
+  });
+
+  // ===== COMPLETE MODAL =====
+  function showCompleteModal() {
+    document.getElementById('complete-modal').classList.add('show');
+    const c = document.getElementById('particles');
+    c.innerHTML = '';
+    for (let i = 0; i < 20; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.cssText = `left:${Math.random()*100}%;animation-duration:${3+Math.random()*4}s;animation-delay:${Math.random()*3}s;width:${3+Math.random()*4}px;height:${3+Math.random()*4}px`;
+      c.appendChild(p);
+    }
+  }
+  document.getElementById('btn-modal-close').addEventListener('click', () => {
+    document.getElementById('complete-modal').classList.remove('show');
+  });
+
+  // ===== CARD SELECTION =====
+  document.getElementById('venue-grid').addEventListener('click', function (e) {
+    const card = e.target.closest('.select-card');
+    if (!card) return;
+    const v = card.dataset.venue;
+    if (state.venue === v) return;
+    state.venue = v; state.checks = {};
+    save();
+    this.querySelectorAll('.select-card').forEach(c => c.classList.toggle('selected', c.dataset.venue === v));
+    renderChecklist();
+  });
+
+  document.getElementById('travel-grid').addEventListener('click', function (e) {
+    const card = e.target.closest('.select-card');
+    if (!card) return;
+    const t = card.dataset.travel;
+    if (state.travel === t) return;
+    state.travel = t; state.checks = {};
+    save();
+    this.querySelectorAll('.select-card').forEach(c => c.classList.toggle('selected', c.dataset.travel === t));
+    renderChecklist();
+  });
+
+  function applySelectionUI() {
+    document.querySelectorAll('#venue-grid .select-card').forEach(c => c.classList.toggle('selected', c.dataset.venue === state.venue));
+    document.querySelectorAll('#travel-grid .select-card').forEach(c => c.classList.toggle('selected', c.dataset.travel === state.travel));
+  }
+
+  // ===== CUSTOM FORM (Add / Edit) =====
+  let editingId = null;
+
+  function getFormCategory() {
+    const sel = document.querySelector('#form-category-group .radio-item.selected');
+    return sel ? sel.dataset.val : 'common';
+  }
+  function getFormVenues() {
+    return [...document.querySelectorAll('#form-venue-grid .cb-item.checked')].map(el => el.dataset.val);
+  }
+  function getFormTravels() {
+    return [...document.querySelectorAll('#form-travel-grid .cb-item.checked')].map(el => el.dataset.val);
+  }
+
+  function setCategory(cat) {
+    document.querySelectorAll('#form-category-group .radio-item').forEach(el => {
+      el.classList.toggle('selected', el.dataset.val === cat);
+    });
+    document.getElementById('form-venue-row').classList.toggle('hidden', cat !== 'venue');
+    document.getElementById('form-travel-row').classList.toggle('hidden', cat !== 'travel');
+  }
+
+  function setFormValues(name, category, venues, travels) {
+    document.getElementById('custom-name-input').value = name;
+    setCategory(category);
+    document.querySelectorAll('#form-venue-grid .cb-item').forEach(el => {
+      el.classList.toggle('checked', venues.includes(el.dataset.val));
+    });
+    document.querySelectorAll('#form-travel-grid .cb-item').forEach(el => {
+      el.classList.toggle('checked', travels.includes(el.dataset.val));
+    });
+  }
+
+  function clearForm() {
+    setFormValues('', 'common', [], []);
+    hideFormError();
+    editingId = null;
+    document.getElementById('custom-form').classList.remove('edit-mode');
+    document.getElementById('btn-custom-submit').textContent = '追加する';
+    const cancel = document.getElementById('btn-custom-cancel');
+    if (cancel) cancel.remove();
+  }
+
+  function showFormError(msg) {
+    const el = document.getElementById('custom-name-error');
+    el.textContent = msg; el.style.display = 'block';
+    const input = document.getElementById('custom-name-input');
+    input.classList.remove('shake');
+    void input.offsetWidth;
+    input.classList.add('shake');
+  }
+  function hideFormError() {
+    document.getElementById('custom-name-error').style.display = 'none';
+  }
+
+  // Category radio
+  document.getElementById('form-category-group').addEventListener('click', e => {
+    const item = e.target.closest('.radio-item');
+    if (!item) return;
+    setCategory(item.dataset.val);
+    hideFormError();
+  });
+
+  // Toggle checkboxes in form
+  document.getElementById('form-venue-grid').addEventListener('click', e => {
+    const item = e.target.closest('.cb-item');
+    if (item) item.classList.toggle('checked');
+  });
+  document.getElementById('form-travel-grid').addEventListener('click', e => {
+    const item = e.target.closest('.cb-item');
+    if (item) item.classList.toggle('checked');
+  });
+
+  document.getElementById('btn-custom-submit').addEventListener('click', submitCustomForm);
+  document.getElementById('custom-name-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitCustomForm();
+  });
+
+  function submitCustomForm() {
+    const name = document.getElementById('custom-name-input').value.trim();
+    const category = getFormCategory();
+    const venues = getFormVenues();
+    const travels = getFormTravels();
+
+    if (!name) { showFormError('持ち物名を入力してください'); return; }
+    if (category === 'venue' && !venues.length) { showFormError('現場タイプを1つ以上選択してください'); return; }
+    if (category === 'travel' && !travels.length) { showFormError('移動タイプを1つ以上選択してください'); return; }
+
+    const dup = state.customs.find(c => c.name === name && c.id !== editingId);
+    if (dup) { showFormError(`「${name}」はすでに登録されています`); return; }
+
+    if (editingId) {
+      const idx = state.customs.findIndex(c => c.id === editingId);
+      if (idx !== -1) {
+        const old = state.customs[idx];
+        if (old.name !== name) delete state.checks['custom_' + old.id];
+        state.customs[idx] = { id: editingId, name, category, venues, travels };
+      }
+    } else {
+      state.customs.push({ id: genId(), name, category, venues, travels });
+    }
+
+    save();
+    clearForm();
+    renderChecklist();
+  }
+
+  function enterEditMode(id) {
+    const c = state.customs.find(x => x.id === id);
+    if (!c) return;
+    editingId = id;
+    setFormValues(c.name, c.category || 'common', c.venues, c.travels);
+    hideFormError();
+
+    document.getElementById('custom-form').classList.add('edit-mode');
+    document.getElementById('btn-custom-submit').textContent = '保存する';
+
+    if (!document.getElementById('btn-custom-cancel')) {
+      const btn = document.createElement('button');
+      btn.className = 'btn-form-cancel'; btn.id = 'btn-custom-cancel'; btn.textContent = 'キャンセル';
+      btn.addEventListener('click', clearForm);
+      document.querySelector('.form-actions').appendChild(btn);
+    }
+
+    document.getElementById('custom-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => document.getElementById('custom-name-input').focus(), 300);
+  }
+
+
+  function deleteCustom(id) {
+    const c = state.customs.find(x => x.id === id);
+    if (!c) return;
+    if (!confirm(`「${c.name}」を削除しますか？`)) return;
+    state.customs = state.customs.filter(x => x.id !== id);
+    delete state.checks['custom_' + id];
+    if (editingId === id) clearForm();
+    save();
+    renderChecklist();
+  }
+
+  // ===== TEMPLATES =====
+  function renderTemplates() {
+    const list = document.getElementById('template-list');
+    if (!state.templates.length) {
+      list.innerHTML = '<div class="empty-state-sm">保存済みテンプレートはありません</div>';
+      return;
+    }
+    list.innerHTML = state.templates.map((t, i) => `
+      <div class="template-item">
+        <button class="btn-template-load" data-idx="${i}">
+          <span>${escapeHtml(t.name)}</span>
+          <span class="template-meta">${escapeHtml(VENUE_LABELS[t.venue] || '')} × ${escapeHtml(TRAVEL_LABELS[t.travel] || '')}</span>
+        </button>
+        <button class="btn-template-del" data-idx="${i}" title="削除">🗑</button>
+      </div>`).join('');
+
+    list.querySelectorAll('.btn-template-load').forEach(btn => {
+      btn.addEventListener('click', () => loadTemplate(parseInt(btn.dataset.idx)));
+    });
+    list.querySelectorAll('.btn-template-del').forEach(btn => {
+      btn.addEventListener('click', () => deleteTemplate(parseInt(btn.dataset.idx)));
+    });
+  }
+
+  function loadTemplate(idx) {
+    const t = state.templates[idx];
+    if (!t) return;
+    state.venue = t.venue; state.travel = t.travel; state.checks = {};
+    save();
+    applySelectionUI(); renderChecklist();
+    document.getElementById('checklist-section').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function deleteTemplate(idx) {
+    if (!confirm('テンプレートを削除しますか？')) return;
+    state.templates.splice(idx, 1);
+    save(); renderTemplates();
+  }
+
+  document.getElementById('btn-save-template').addEventListener('click', () => {
+    const input = document.getElementById('template-name-input');
+    const name = input.value.trim();
+    if (!name) { input.focus(); return; }
+    if (!state.venue || !state.travel) { alert('現場タイプと移動タイプを選択してください'); return; }
+    state.templates.push({ name, venue: state.venue, travel: state.travel });
+    save(); input.value = ''; renderTemplates();
+  });
+
+  // ===== LOADING =====
+  function startLoading() {
+    const msg = LOADING_MSGS[Math.floor(Math.random() * LOADING_MSGS.length)];
+    document.getElementById('loading-msg').innerHTML = `${escapeHtml(msg)}<span class="loading-dots"></span>`;
+    setTimeout(() => {
+      document.getElementById('loading-screen').classList.add('fade-out');
+      document.getElementById('app').classList.add('visible');
+      setTimeout(() => { document.getElementById('loading-screen').style.display = 'none'; }, 400);
+    }, 800 + Math.random() * 400);
+  }
+
+  // ===== INIT =====
+  function init() {
+    load();
+    applySelectionUI();
+    renderChecklist();
+    renderTemplates();
+    startLoading();
+  }
+
+  // ===== AUTH =====
+  const AUTH_KEY = 'motta_auth';
+  const PASSWORD = '3824';
+
+  function showApp() {
+    document.getElementById('loading-screen').style.display = '';
+    init();
+  }
+
+  (function setupAuth() {
+    if (sessionStorage.getItem(AUTH_KEY) === '1') {
+      document.getElementById('auth-screen').style.display = 'none';
+      showApp();
+      return;
+    }
+
+    const digits = [
+      document.getElementById('d0'),
+      document.getElementById('d1'),
+      document.getElementById('d2'),
+      document.getElementById('d3'),
+    ];
+    const errorEl = document.getElementById('auth-error');
+
+    // Auto-advance and auto-backspace
+    digits.forEach((input, i) => {
+      input.addEventListener('input', () => {
+        const v = input.value.replace(/\D/g, '');
+        input.value = v.slice(-1);
+        input.classList.toggle('filled', !!input.value);
+        if (input.value && i < 3) digits[i + 1].focus();
+        if (digits.every(d => d.value)) tryAuth();
+      });
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Backspace' && !input.value && i > 0) {
+          digits[i - 1].value = '';
+          digits[i - 1].classList.remove('filled');
+          digits[i - 1].focus();
+        }
+        if (e.key === 'Enter') tryAuth();
+      });
+    });
+
+    document.getElementById('btn-auth').addEventListener('click', tryAuth);
+    setTimeout(() => digits[0].focus(), 100);
+
+    function tryAuth() {
+      const entered = digits.map(d => d.value).join('');
+      if (entered.length < 4) {
+        showError('4桁入力してください');
+        return;
+      }
+      if (entered === PASSWORD) {
+        sessionStorage.setItem(AUTH_KEY, '1');
+        const screen = document.getElementById('auth-screen');
+        screen.classList.add('fade-out');
+        setTimeout(() => {
+          screen.style.display = 'none';
+          showApp();
+        }, 350);
+      } else {
+        showError('パスワードが違います');
+        digits.forEach(d => { d.value = ''; d.classList.remove('filled'); });
+        setTimeout(() => digits[0].focus(), 10);
+      }
+    }
+
+    function showError(msg) {
+      errorEl.textContent = msg;
+      errorEl.style.animation = 'none';
+      void errorEl.offsetWidth;
+      errorEl.style.animation = '';
+    }
+  })();
+})();
+</script>
+</body>
+</html>
