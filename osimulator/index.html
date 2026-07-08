@@ -1,1 +1,1685 @@
-<h1>osimulator</h1>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>限界現場シミュレーター</title>
+<style>
+  /* ==========================================================
+     カラーパレット & 基本変数
+     テーマ：推し活 × ネオン × 紫
+  ========================================================== */
+  :root{
+    --main-color: #b06cff;      /* メインカラー（ネオンパープル） */
+    --sub-color: #d5b3ff;       /* サブカラー（ライトパープル） */
+    --bg-color: #0f0f13;        /* 背景色（ほぼ黒に近いダーク） */
+    --card-bg: #1a1a22;         /* カード背景 */
+    --text-color: #ffffff;      /* 基本文字色 */
+    --danger-color: #ff6cae;    /* 削除ボタンなどの警告色 */
+    --neon-glow: 0 0 8px rgba(176,108,255,0.8), 0 0 18px rgba(176,108,255,0.5);
+
+    /* カテゴリ別カラー（円グラフ・傾向バーで共通利用） */
+    --cat-ticket: #b06cff;
+    --cat-transport: #7c4dff;
+    --cat-hotel: #d5b3ff;
+    --cat-food: #ff6cae;
+    --cat-prep: #ff9de2;
+    --cat-goods: #6cd4ff;
+  }
+
+  /* ざっくりリセット */
+  *{
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html, body{
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    width: 100%;
+    min-height: 100%;
+    overflow-x: hidden; /* 横スクロール防止 */
+  }
+
+  /* 背景にうっすらネオンの光の玉を漂わせて雰囲気を出す */
+  body{
+    background:
+      radial-gradient(circle at 20% 10%, rgba(176,108,255,0.15), transparent 40%),
+      radial-gradient(circle at 80% 90%, rgba(213,179,255,0.12), transparent 45%),
+      var(--bg-color);
+    background-attachment: fixed;
+  }
+
+  .container{
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 16px 16px 60px;
+  }
+
+  /* ==========================================================
+     ヘッダー
+  ========================================================== */
+  header{
+    text-align: center;
+    padding: 28px 12px 20px;
+  }
+
+  header h1{
+    font-size: clamp(22px, 6vw, 30px);
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: var(--text-color);
+    text-shadow: var(--neon-glow);
+    animation: neonFlicker 3.5s infinite alternate;
+  }
+
+  header p{
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--sub-color);
+    opacity: 0.9;
+  }
+
+  /* ネオンサインがチカチカする雰囲気の演出 */
+  @keyframes neonFlicker{
+    0%, 18%, 22%, 25%, 53%, 57%, 100%{
+      text-shadow: 0 0 6px rgba(176,108,255,0.9), 0 0 16px rgba(176,108,255,0.6), 0 0 26px rgba(176,108,255,0.35);
+    }
+    20%, 24%, 55%{
+      text-shadow: none;
+    }
+  }
+
+  /* ==========================================================
+     共通カード
+  ========================================================== */
+  .card{
+    background: var(--card-bg);
+    border: 1px solid rgba(176,108,255,0.25);
+    border-radius: 18px;
+    padding: 18px;
+    margin-bottom: 18px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+    animation: fadeInUp 0.5s ease;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  }
+
+  .card:hover{
+    transform: translateY(-2px);
+    box-shadow: 0 10px 28px rgba(0,0,0,0.4), 0 0 16px rgba(176,108,255,0.18);
+    border-color: rgba(176,108,255,0.45);
+  }
+
+  .card h2{
+    font-size: 16px;
+    color: var(--sub-color);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  @keyframes fadeInUp{
+    from{ opacity: 0; transform: translateY(12px); }
+    to{ opacity: 1; transform: translateY(0); }
+  }
+
+  /* ガラス風カード（新規追加セクション用） */
+  .glass-card{
+    background: rgba(26,26,34,0.55);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(176,108,255,0.28);
+  }
+
+  /* ==========================================================
+     入力フォーム
+  ========================================================== */
+  .input-row{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 4px;
+    border-bottom: 1px dashed rgba(255,255,255,0.08);
+  }
+
+  .input-row:last-child{
+    border-bottom: none;
+  }
+
+  .input-row label{
+    flex: 1;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .input-row .emoji{
+    font-size: 18px;
+    filter: drop-shadow(0 0 4px rgba(176,108,255,0.6));
+  }
+
+  .input-row input[type="number"]{
+    width: 120px;
+    max-width: 40vw;
+    background: #12121a;
+    border: 1px solid rgba(176,108,255,0.35);
+    border-radius: 10px;
+    color: var(--text-color);
+    font-size: 15px;
+    padding: 8px 10px;
+    text-align: right;
+    outline: none;
+    transition: box-shadow 0.2s, border-color 0.2s;
+    /* 数値入力のスピナーはそのままでOK（スマホでは基本非表示） */
+  }
+
+  .input-row input[type="number"]:focus{
+    border-color: var(--main-color);
+    box-shadow: 0 0 10px rgba(176,108,255,0.6);
+  }
+
+  /* 円マーク */
+  .unit{
+    font-size: 13px;
+    color: var(--sub-color);
+    opacity: 0.8;
+  }
+
+  /* ==========================================================
+     ボタン
+  ========================================================== */
+  .btn{
+    display: block;
+    width: 100%;
+    padding: 16px;
+    font-size: 17px;
+    font-weight: 700;
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    color: #fff;
+    background: linear-gradient(135deg, var(--main-color), #7a3fd6);
+    box-shadow: 0 0 16px rgba(176,108,255,0.55), 0 4px 12px rgba(0,0,0,0.4);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    letter-spacing: 0.03em;
+  }
+
+  .btn:active{
+    transform: scale(0.97);
+    box-shadow: 0 0 8px rgba(176,108,255,0.4);
+  }
+
+  .btn.secondary{
+    background: transparent;
+    border: 1px solid var(--sub-color);
+    color: var(--sub-color);
+    box-shadow: none;
+    margin-top: 10px;
+  }
+
+  .btn.danger{
+    background: transparent;
+    border: 1px solid var(--danger-color);
+    color: var(--danger-color);
+    box-shadow: none;
+  }
+
+  .btn.small{
+    width: auto;
+    padding: 8px 14px;
+    font-size: 13px;
+    border-radius: 10px;
+  }
+
+  /* ==========================================================
+     パスワード認証オーバーレイ
+     認証済み（sessionStorage）になるまでアプリ本体を隠す
+  ========================================================== */
+  #appContainer{
+    display: none;
+  }
+
+  #authOverlay{
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background:
+      radial-gradient(circle at 20% 10%, rgba(176,108,255,0.18), transparent 40%),
+      radial-gradient(circle at 80% 90%, rgba(213,179,255,0.14), transparent 45%),
+      var(--bg-color);
+    transition: opacity 0.4s ease;
+  }
+
+  #authOverlay.hide{
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .auth-card{
+    width: 100%;
+    max-width: 320px;
+    background: rgba(26,26,34,0.75);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(176,108,255,0.35);
+    border-radius: 20px;
+    padding: 32px 24px;
+    text-align: center;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5), 0 0 24px rgba(176,108,255,0.2);
+    animation: fadeInUp 0.5s ease;
+  }
+
+  .auth-emoji{
+    font-size: 40px;
+    margin-bottom: 10px;
+    filter: drop-shadow(0 0 10px rgba(176,108,255,0.7));
+    animation: floaty 2.4s ease-in-out infinite;
+  }
+
+  .auth-title{
+    font-size: 18px;
+    font-weight: 800;
+    text-shadow: var(--neon-glow);
+    margin-bottom: 6px;
+  }
+
+  .auth-sub{
+    font-size: 13px;
+    color: var(--sub-color);
+    margin-bottom: 20px;
+  }
+
+  .auth-input{
+    width: 100%;
+    background: #12121a;
+    border: 1px solid rgba(176,108,255,0.4);
+    border-radius: 12px;
+    color: var(--text-color);
+    font-size: 20px;
+    letter-spacing: 0.4em;
+    text-align: center;
+    padding: 12px;
+    outline: none;
+    transition: box-shadow 0.2s, border-color 0.2s;
+  }
+
+  .auth-input:focus{
+    border-color: var(--main-color);
+    box-shadow: 0 0 12px rgba(176,108,255,0.6);
+  }
+
+  .auth-input.shake{
+    animation: authShake 0.4s ease;
+  }
+
+  @keyframes authShake{
+    0%, 100%{ transform: translateX(0); }
+    20%{ transform: translateX(-8px); }
+    40%{ transform: translateX(8px); }
+    60%{ transform: translateX(-6px); }
+    80%{ transform: translateX(6px); }
+  }
+
+  .auth-error{
+    display: none;
+    color: var(--danger-color);
+    font-size: 12px;
+    margin-top: 12px;
+  }
+
+  .auth-card .btn{
+    margin-top: 18px;
+  }
+
+  /* ==========================================================
+     診断中の演出（ローディング）
+  ========================================================== */
+  #loadingOverlay{
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15,15,19,0.9);
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+    backdrop-filter: blur(2px);
+  }
+
+  #loadingOverlay.show{
+    display: flex;
+  }
+
+  .spinner{
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    border: 4px solid rgba(176,108,255,0.2);
+    border-top-color: var(--main-color);
+    animation: spin 0.8s linear infinite;
+    box-shadow: var(--neon-glow);
+  }
+
+  @keyframes spin{
+    to{ transform: rotate(360deg); }
+  }
+
+  #loadingText{
+    font-size: 15px;
+    color: var(--sub-color);
+    animation: pulseText 1s ease-in-out infinite;
+  }
+
+  @keyframes pulseText{
+    0%, 100%{ opacity: 0.6; }
+    50%{ opacity: 1; }
+  }
+
+  /* ==========================================================
+     結果表示エリア
+  ========================================================== */
+  #resultSection{
+    display: none;
+  }
+
+  #resultSection.show{
+    display: block;
+    animation: fadeInUp 0.5s ease;
+  }
+
+  .result-total-label{
+    font-size: 13px;
+    color: var(--sub-color);
+    text-align: center;
+  }
+
+  .result-total-amount{
+    font-size: clamp(32px, 10vw, 44px);
+    font-weight: 900;
+    text-align: center;
+    color: var(--text-color);
+    text-shadow: 0 0 12px rgba(176,108,255,0.8), 0 0 26px rgba(176,108,255,0.4);
+    margin: 6px 0 4px;
+    word-break: break-all;
+  }
+
+  .breakdown-list{
+    list-style: none;
+    margin-top: 8px;
+  }
+
+  .breakdown-list li{
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 4px;
+    font-size: 14px;
+    border-bottom: 1px dashed rgba(255,255,255,0.08);
+  }
+
+  .breakdown-list li:last-child{
+    border-bottom: none;
+  }
+
+  .breakdown-list li span.amount{
+    color: var(--sub-color);
+    font-weight: 700;
+  }
+
+  /* 推し活レベル・幸福度カードの共通見た目 */
+  .badge-card{
+    text-align: center;
+  }
+
+  .badge-emoji{
+    font-size: 42px;
+    display: block;
+    margin-bottom: 6px;
+    filter: drop-shadow(0 0 10px rgba(176,108,255,0.6));
+    animation: floaty 2.4s ease-in-out infinite;
+  }
+
+  @keyframes floaty{
+    0%, 100%{ transform: translateY(0); }
+    50%{ transform: translateY(-6px); }
+  }
+
+  .badge-title{
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text-color);
+  }
+
+  .badge-sub{
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--sub-color);
+    font-style: italic;
+  }
+
+  .happiness-percent{
+    font-size: 30px;
+    font-weight: 900;
+    color: var(--main-color);
+    text-shadow: 0 0 10px rgba(176,108,255,0.7);
+  }
+
+  .quote-box{
+    text-align: center;
+    font-size: 14px;
+    color: var(--sub-color);
+    padding: 14px;
+    border: 1px dashed rgba(176,108,255,0.4);
+    border-radius: 12px;
+    background: rgba(176,108,255,0.06);
+  }
+
+  .quote-box::before{
+    content: "💬 ";
+  }
+
+  /* ==========================================================
+     推し活タイプ診断（複数バッジ表示）
+  ========================================================== */
+  .type-badge-list{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .type-badge{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(176,108,255,0.08);
+    border: 1px solid rgba(176,108,255,0.25);
+    border-radius: 14px;
+    padding: 12px 14px;
+    text-align: left;
+    opacity: 0;
+    animation: fadeInUp 0.45s ease forwards;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  }
+
+  .type-badge:hover{
+    transform: translateY(-3px) scale(1.01);
+    box-shadow: 0 8px 20px rgba(176,108,255,0.3);
+    background: rgba(176,108,255,0.15);
+  }
+
+  .type-badge-emoji{
+    font-size: 28px;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 6px rgba(176,108,255,0.6));
+  }
+
+  .type-badge-text .badge-title{
+    font-size: 15px;
+  }
+
+  .type-badge-text .badge-sub{
+    margin-top: 2px;
+  }
+
+  /* ==========================================================
+     あなたの推し活傾向（カテゴリ内訳バー）
+  ========================================================== */
+  .trend-list{
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .trend-row{
+    opacity: 0;
+    animation: fadeInUp 0.4s ease forwards;
+  }
+
+  .trend-row-top{
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+
+  .trend-percent{
+    color: var(--sub-color);
+    font-weight: 700;
+  }
+
+  .trend-bar-track{
+    width: 100%;
+    height: 9px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .trend-bar-fill{
+    height: 100%;
+    width: 0%;
+    border-radius: 6px;
+    box-shadow: 0 0 8px rgba(176,108,255,0.5);
+    transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* ==========================================================
+     円グラフ（Canvas）
+  ========================================================== */
+  .chart-card{
+    text-align: center;
+  }
+
+  .chart-wrap{
+    display: flex;
+    justify-content: center;
+    margin: 10px 0 6px;
+  }
+
+  #pieChart{
+    width: min(220px, 60vw);
+    height: min(220px, 60vw);
+    max-width: 100%;
+    transition: transform 0.3s ease;
+  }
+
+  .chart-wrap:hover #pieChart{
+    transform: scale(1.03);
+  }
+
+  .chart-legend{
+    list-style: none;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 14px;
+    margin-top: 10px;
+    text-align: left;
+  }
+
+  .chart-legend li{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    opacity: 0;
+    animation: fadeInUp 0.4s ease forwards;
+  }
+
+  .legend-dot{
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+    box-shadow: 0 0 6px currentColor;
+  }
+
+  /* ==========================================================
+     年間サマリー / 履歴
+  ========================================================== */
+  .summary-grid{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .summary-item{
+    background: #12121a;
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+    border: 1px solid rgba(176,108,255,0.15);
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+
+  .summary-item:hover{
+    transform: translateY(-2px);
+    border-color: var(--main-color);
+  }
+
+  .summary-item .label{
+    font-size: 12px;
+    color: var(--sub-color);
+    margin-bottom: 4px;
+  }
+
+  .summary-item .value{
+    font-size: 16px;
+    font-weight: 800;
+  }
+
+  .annual-title-box{
+    text-align: center;
+    margin-top: 14px;
+    padding: 14px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(176,108,255,0.15), rgba(213,179,255,0.08));
+  }
+
+  .annual-title-box .badge-emoji{
+    font-size: 34px;
+  }
+
+  .annual-trend-section{
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px dashed rgba(255,255,255,0.1);
+  }
+
+  .annual-trend-section h3{
+    font-size: 14px;
+    color: var(--sub-color);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .history-item{
+    background: #12121a;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 10px;
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+
+  .history-item:hover{
+    transform: translateY(-2px);
+    border-color: rgba(176,108,255,0.35);
+  }
+
+  .history-item .history-top{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  .history-item .history-date{
+    font-size: 12px;
+    color: var(--sub-color);
+  }
+
+  .history-item .history-amount{
+    font-size: 17px;
+    font-weight: 800;
+  }
+
+  .history-item .history-meta{
+    font-size: 12px;
+    color: var(--sub-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .history-item .delete-one{
+    background: none;
+    border: none;
+    color: var(--danger-color);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 4px 8px;
+  }
+
+  .empty-msg{
+    text-align: center;
+    font-size: 13px;
+    color: var(--sub-color);
+    opacity: 0.7;
+    padding: 12px 0;
+  }
+
+  footer{
+    text-align: center;
+    font-size: 11px;
+    color: var(--sub-color);
+    opacity: 0.5;
+    margin-top: 24px;
+  }
+
+  /* タブレット・PC幅では少しゆったり見せる */
+  @media (min-width: 600px){
+    .container{
+      max-width: 560px;
+      padding-top: 24px;
+    }
+    .summary-grid{
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  @media (min-width: 900px){
+    .container{
+      max-width: 640px;
+    }
+  }
+
+  /* 320px幅でも崩れないよう最低限の調整 */
+  @media (max-width: 340px){
+    .input-row input[type="number"]{
+      width: 100px;
+    }
+    header h1{
+      font-size: 20px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     パスワード認証オーバーレイ
+     正しいパスワードが入力されるまでアプリ本体は非表示のまま
+============================================================ -->
+<div id="authOverlay">
+  <div class="auth-card">
+    <span class="auth-emoji">🔒</span>
+    <p class="auth-title">限界現場シミュレーター</p>
+    <p class="auth-sub">合言葉を入力してください</p>
+    <input
+      type="password"
+      id="authPasswordInput"
+      class="auth-input"
+      inputmode="numeric"
+      autocomplete="off"
+      maxlength="4"
+      placeholder="＊＊＊＊"
+    >
+    <p class="auth-error" id="authError">パスワードが違います</p>
+    <button class="btn" id="authSubmitBtn">認証する</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     診断中に表示するオーバーレイ演出
+============================================================ -->
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+  <div id="loadingText">遠征費を集計中…</div>
+</div>
+
+<div class="container" id="appContainer">
+
+  <!-- ヘッダー -->
+  <header>
+    <h1>限界現場シミュレーター</h1>
+    <p>あなたの財布は今日も推しに捧げられる</p>
+  </header>
+
+  <!-- ============================================================
+       入力フォーム
+  ============================================================ -->
+  <div class="card">
+    <h2>💸 遠征費を入力しよう</h2>
+
+    <div class="input-row">
+      <label for="input-ticket"><span class="emoji">🎫</span>チケット代</label>
+      <input type="number" id="input-ticket" inputmode="numeric" min="0" placeholder="0">
+    </div>
+
+    <div class="input-row">
+      <label for="input-gas"><span class="emoji">⛽</span>ガソリン代</label>
+      <input type="number" id="input-gas" inputmode="numeric" min="0" placeholder="0">
+    </div>
+
+    <div class="input-row">
+      <label for="input-highway"><span class="emoji">🚗</span>高速代</label>
+      <input type="number" id="input-highway" inputmode="numeric" min="0" placeholder="0">
+    </div>
+
+    <div class="input-row">
+      <label for="input-train"><span class="emoji">🚃</span>電車代</label>
+      <input type="number" id="input-train" inputmode="numeric" min="0" placeholder="0">
+    </div>
+
+    <div class="input-row">
+      <label for="input-flight"><span class="emoji">✈️</span>飛行機代</label>
+      <input type="number" id="input-flight" inputmode="numeric" min="0" placeholder="0">
+    </div>
+
+    <div class="input-row">
+      <label for="input-hotel"><span class="emoji">🏨</span>ホテル代</label>
+      <input type="number" id="input-hotel" inputmode="numeric" min="0" placeholder="0">
+    </div>
+
+    <div class="input-row">
+      <label for="input-food"><span class="emoji">🍴</span>食費</label>
+      <input type="number" id="input-food" inputmode="numeric" min="0" placeholder="0">
+    </div>
+
+    <div class="input-row">
+      <label for="input-cafe"><span class="emoji">☕</span>カフェ代</label>
+      <input type="number" id="input-cafe" inputmode="numeric" min="0" placeholder="0">
+    </div>
+
+    <div class="input-row">
+      <label for="input-prep"><span class="emoji">💄</span>現場準備費</label>
+      <input type="number" id="input-prep" inputmode="numeric" min="0" placeholder="0">
+    </div>
+
+    <div class="input-row">
+      <label for="input-goods"><span class="emoji">🛍️</span>グッズ代</label>
+      <input type="number" id="input-goods" inputmode="numeric" min="0" placeholder="0">
+    </div>
+
+    <button class="btn" id="diagnoseBtn" style="margin-top:16px;">限界度を診断する</button>
+  </div>
+
+  <!-- ============================================================
+       結果表示エリア（診断後に表示）
+       表示順：①合計 ②内訳 ③レベル ④タイプ ⑤幸福度 ⑥名言
+              ⑦推し活傾向 ⑧円グラフ ⑨保存ボタン
+  ============================================================ -->
+  <div id="resultSection">
+
+    <!-- ① 合計金額 -->
+    <div class="card">
+      <p class="result-total-label">今回の遠征費</p>
+      <p class="result-total-amount" id="resultTotal">0円</p>
+    </div>
+
+    <!-- 内訳 -->
+    <div class="card">
+      <h2>📋 内訳</h2>
+      <ul class="breakdown-list" id="breakdownList"></ul>
+    </div>
+
+    <!-- ② 推し活レベル -->
+    <div class="card badge-card">
+      <h2 style="justify-content:center;">🧭 推し活レベル判定</h2>
+      <span class="badge-emoji" id="levelEmoji">🌱</span>
+      <p class="badge-title" id="levelTitle">在宅寄りオタク</p>
+      <p class="badge-sub" id="levelComment">「今日は財布に優しい日」</p>
+    </div>
+
+    <!-- ③ 推し活タイプ診断（複数表示可） -->
+    <div class="card badge-card">
+      <h2 style="justify-content:center;">🪄 推し活タイプ診断</h2>
+      <div class="type-badge-list" id="typeResultsContainer"></div>
+    </div>
+
+    <!-- ④ 幸福度 -->
+    <div class="card badge-card">
+      <h2 style="justify-content:center;">💜 推し活幸福度</h2>
+      <p class="happiness-percent"><span id="happinessValue">0</span>%</p>
+      <p class="badge-sub" id="happinessComment">「移動費との戦いだった」</p>
+    </div>
+
+    <!-- ⑤ オタク名言 -->
+    <div class="card">
+      <div class="quote-box" id="quoteBox">これは投資です</div>
+    </div>
+
+    <!-- ⑥ あなたの推し活傾向 -->
+    <div class="card glass-card">
+      <h2>🧭 あなたの推し活傾向</h2>
+      <ul class="trend-list" id="trendList"></ul>
+      <div class="trend-comment badge-card">
+        <span class="badge-emoji" id="trendEmoji">🎫</span>
+        <p class="badge-title" id="trendTitle">現場最優先タイプ</p>
+        <p class="badge-sub" id="trendComment">「まずは推し本人に会いたい」</p>
+      </div>
+    </div>
+
+    <!-- ⑦ 円グラフ -->
+    <div class="card glass-card chart-card">
+      <h2 style="justify-content:center;">📈 支出割合グラフ</h2>
+      <div class="chart-wrap">
+        <canvas id="pieChart" width="220" height="220"></canvas>
+      </div>
+      <ul class="chart-legend" id="chartLegend"></ul>
+    </div>
+
+    <!-- ⑧ 記録ボタン -->
+    <button class="btn" id="saveBtn">今回の遠征を記録する</button>
+  </div>
+
+  <!-- ============================================================
+       年間サマリー
+  ============================================================ -->
+  <div class="card">
+    <h2>📊 年間サマリー</h2>
+    <div class="summary-grid">
+      <div class="summary-item">
+        <div class="label">年間参戦回数</div>
+        <div class="value" id="summaryCount">0回</div>
+      </div>
+      <div class="summary-item">
+        <div class="label">年間遠征費</div>
+        <div class="value" id="summaryTotal">0円</div>
+      </div>
+      <div class="summary-item">
+        <div class="label">最高遠征費</div>
+        <div class="value" id="summaryMax">0円</div>
+      </div>
+      <div class="summary-item">
+        <div class="label">平均遠征費</div>
+        <div class="value" id="summaryAvg">0円</div>
+      </div>
+    </div>
+
+    <!-- 年間称号 -->
+    <div class="annual-title-box">
+      <span class="badge-emoji" id="annualEmoji">🌱</span>
+      <p class="badge-title" id="annualTitle">推し活初心者</p>
+    </div>
+
+    <!-- 年間の推し活傾向（記録が1件以上ある場合のみ表示） -->
+    <div class="annual-trend-section" id="annualTrendSection" style="display:none;">
+      <h3>🗓️ 今年の推し活傾向</h3>
+      <ul class="trend-list" id="annualTrendList"></ul>
+      <div class="trend-comment badge-card">
+        <span class="badge-emoji" id="annualCommentEmoji">💄</span>
+        <p class="badge-title" id="annualCommentTitle">今年のあなたは「仕込み職人」でした</p>
+        <p class="badge-sub" id="annualCommentDesc">推しに会う前の準備に最も力を注いだ一年です。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       データ管理（履歴一覧）
+  ============================================================ -->
+  <div class="card">
+    <h2>🗂️ 参戦履歴</h2>
+    <div id="historyList">
+      <p class="empty-msg">まだ記録がありません</p>
+    </div>
+    <button class="btn danger" id="deleteAllBtn" style="margin-top:10px;">全履歴を削除する</button>
+  </div>
+
+  <footer>限界現場シミュレーター ｜ 推し活は計画的に</footer>
+
+</div>
+
+<script>
+/* ============================================================
+   パスワード認証
+   sessionStorageに認証済みフラグを保存する（タブを閉じると消える＝再認証、
+   リロードだけなら維持される＝再認証不要）
+============================================================ */
+const AUTH_STORAGE_KEY = 'genkai_genba_auth';
+const AUTH_PASSWORD = '3824';
+
+const authOverlay = document.getElementById('authOverlay');
+const appContainer = document.getElementById('appContainer');
+const authPasswordInput = document.getElementById('authPasswordInput');
+const authError = document.getElementById('authError');
+const authSubmitBtn = document.getElementById('authSubmitBtn');
+
+// 認証オーバーレイをフェードアウトさせつつアプリ本体を表示する
+function unlockApp(withAnimation) {
+  sessionStorage.setItem(AUTH_STORAGE_KEY, 'true');
+  appContainer.style.display = 'block';
+  if (withAnimation) {
+    authOverlay.classList.add('hide');
+    setTimeout(() => { authOverlay.style.display = 'none'; }, 400);
+  } else {
+    authOverlay.style.display = 'none';
+  }
+}
+
+// パスワード判定。正しければ解錠、間違っていればエラー表示＋シェイク演出
+function trySubmitPassword() {
+  if (authPasswordInput.value === AUTH_PASSWORD) {
+    authError.style.display = 'none';
+    unlockApp(true);
+  } else {
+    authError.style.display = 'block';
+    authPasswordInput.value = '';
+    authPasswordInput.classList.remove('shake');
+    // 同じアニメーションを連続再生できるよう一度クラスを外してから付け直す
+    void authPasswordInput.offsetWidth;
+    authPasswordInput.classList.add('shake');
+    authPasswordInput.focus();
+  }
+}
+
+authSubmitBtn.addEventListener('click', trySubmitPassword);
+authPasswordInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') trySubmitPassword();
+});
+
+// 初期チェック：sessionStorageに認証済みフラグがあればアプリをそのまま表示
+if (sessionStorage.getItem(AUTH_STORAGE_KEY) === 'true') {
+  unlockApp(false);
+} else {
+  authPasswordInput.focus();
+}
+
+/* ============================================================
+   限界現場シミュレーター ロジック部分
+   すべてローカルで完結（サーバー通信なし）
+============================================================ */
+
+// localStorageに保存するキー名
+const STORAGE_KEY = 'genkai_genba_history';
+
+// 入力項目の定義（id・ラベル・絵文字をまとめて管理）
+// この配列を軸に「合計計算」「内訳表示」「タイプ判定」を全部行う
+const INPUT_ITEMS = [
+  { id: 'input-ticket',  label: 'チケット代',   emoji: '🎫', key: 'ticket' },
+  { id: 'input-gas',     label: 'ガソリン代',   emoji: '⛽', key: 'gas' },
+  { id: 'input-highway', label: '高速代',       emoji: '🚗', key: 'highway' },
+  { id: 'input-train',   label: '電車代',       emoji: '🚃', key: 'train' },
+  { id: 'input-flight',  label: '飛行機代',     emoji: '✈️', key: 'flight' },
+  { id: 'input-hotel',   label: 'ホテル代',     emoji: '🏨', key: 'hotel' },
+  { id: 'input-food',    label: '食費',         emoji: '🍴', key: 'food' },
+  { id: 'input-cafe',    label: 'カフェ代',     emoji: '☕', key: 'cafe' },
+  { id: 'input-prep',    label: '現場準備費',   emoji: '💄', key: 'prep' },
+  { id: 'input-goods',   label: 'グッズ代',     emoji: '🛍️', key: 'goods' },
+];
+
+// 集計カテゴリの定義（推し活傾向・円グラフ・年間統計で共通利用）
+// 交通費＝ガソリン+高速+電車+飛行機、飲食費＝食費+カフェ代 の合算カテゴリ
+const CATEGORY_META = [
+  { key: 'ticket',    label: 'チケット代', emoji: '🎫', color: 'var(--cat-ticket)' },
+  { key: 'transport', label: '交通費',     emoji: '🚗', color: 'var(--cat-transport)' },
+  { key: 'hotel',     label: 'ホテル代',   emoji: '🏨', color: 'var(--cat-hotel)' },
+  { key: 'food',      label: '飲食費',     emoji: '🍴', color: 'var(--cat-food)' },
+  { key: 'prep',      label: '現場準備費', emoji: '💄', color: 'var(--cat-prep)' },
+  { key: 'goods',     label: 'グッズ代',   emoji: '🛍️', color: 'var(--cat-goods)' },
+];
+
+// 実際にcanvasへ描画する際に使う16進カラー（CSS変数はcanvasに直接使えないため対応表を用意）
+const CATEGORY_HEX = {
+  ticket: '#b06cff',
+  transport: '#7c4dff',
+  hotel: '#d5b3ff',
+  food: '#ff6cae',
+  prep: '#ff9de2',
+  goods: '#6cd4ff',
+};
+
+// 診断中に表示するランダムメッセージ
+const LOADING_MESSAGES = [
+  '遠征費を集計中…',
+  '推しを摂取中…',
+  'オタクレベルを計測中…',
+  '財布の残高を確認中…',
+  '限界度を算出中…',
+  '徳を積んでいます…',
+];
+
+// 結果表示時にランダムで出すオタク名言
+const OTAKU_QUOTES = [
+  'これは投資です',
+  '推しは生活必需品',
+  '来月の自分がなんとかする',
+  'グッズは出会った時が買い時',
+  '記憶より記録、そしてレシート',
+  '現場のために働いています',
+  '交通費は実質無料',
+  'この出費には夢が詰まっている',
+];
+
+// 「あなたの推し活傾向」で最多カテゴリに応じて表示するコメント
+const TREND_COMMENTS = {
+  prep:      { emoji: '💄', title: '美容・身だしなみ重視タイプ', comment: '「推しに会う前の準備も推し活の一部」' },
+  goods:     { emoji: '🛍️', title: 'グッズ収集タイプ',         comment: '「会場限定という言葉に弱い」' },
+  transport: { emoji: '✈️', title: '全国遠征タイプ',           comment: '「推しのためなら距離は関係ない」' },
+  ticket:    { emoji: '🎫', title: '現場最優先タイプ',         comment: '「まずは推し本人に会いたい」' },
+  hotel:     { emoji: '🏨', title: '快適遠征タイプ',           comment: '「推し活も睡眠も妥協しない」' },
+  food:      { emoji: '🍴', title: '現場満喫タイプ',           comment: '「遠征先のグルメも楽しみたい」' },
+};
+
+// 年間統計で最多カテゴリに応じて表示するコメント（診断結果用とは文言を変えている）
+const ANNUAL_COMMENTS = {
+  prep:      { emoji: '💄', title: '仕込み職人',       comment: '推しに会う前の準備に最も力を注いだ一年です。' },
+  goods:     { emoji: '🛍️', title: 'グッズコレクター', comment: 'グッズ収集に情熱を注いだ一年でした。' },
+  transport: { emoji: '✈️', title: '全国遠征王',       comment: '推しのために全国を飛び回った一年でした。' },
+  ticket:    { emoji: '🎫', title: '現場マスター',     comment: 'とにかく現場に足を運んだ一年でした。' },
+  hotel:     { emoji: '🏨', title: '快眠遠征家',       comment: '移動先でもぐっすり眠ることを大切にした一年でした。' },
+  food:      { emoji: '🍴', title: '現場グルメ探検家', comment: '遠征先の美味しいものを楽しんだ一年でした。' },
+};
+
+/* ------------------------------------------------------------
+   数値を3桁区切りの「◯◯◯円」形式に変換するユーティリティ
+------------------------------------------------------------ */
+function formatYen(num) {
+  return Math.round(num).toLocaleString('ja-JP') + '円';
+}
+
+/* ------------------------------------------------------------
+   入力欄からすべての金額を取得（未入力は0円扱い）
+------------------------------------------------------------ */
+function collectInputs() {
+  const values = {};
+  INPUT_ITEMS.forEach(item => {
+    const el = document.getElementById(item.id);
+    const raw = parseFloat(el.value);
+    values[item.key] = (isNaN(raw) || raw < 0) ? 0 : raw;
+  });
+  return values;
+}
+
+/* ------------------------------------------------------------
+   10項目の生の入力値を、6カテゴリ（チケット/交通費/ホテル/
+   飲食費/現場準備費/グッズ）に集約する
+------------------------------------------------------------ */
+function computeCategoryValues(values) {
+  return {
+    ticket: values.ticket,
+    transport: values.gas + values.highway + values.train + values.flight,
+    hotel: values.hotel,
+    food: values.food + values.cafe,
+    prep: values.prep,
+    goods: values.goods,
+  };
+}
+
+/* ------------------------------------------------------------
+   推し活レベル判定（合計金額から判定）
+------------------------------------------------------------ */
+function judgeLevel(total) {
+  if (total >= 150000) {
+    return { emoji: '👑', title: '推し活貴族', comment: '「もはや旅行会社に感謝状を送りたい」' };
+  } else if (total >= 80000) {
+    return { emoji: '🔥', title: '限界オタク', comment: '「カード明細を見るのが怖い」' };
+  } else if (total >= 40000) {
+    return { emoji: '💜', title: '本気オタク', comment: '「推し活がしっかり生活の一部になっている」' };
+  } else if (total >= 15000) {
+    return { emoji: '🎫', title: '現場オタク', comment: '「チケット代＋ちょっとグッズ」' };
+  } else {
+    return { emoji: '🌱', title: '在宅寄りオタク', comment: '「今日は財布に優しい日」' };
+  }
+}
+
+/* ------------------------------------------------------------
+   推し活タイプ診断
+   複数の条件を満たした場合はすべて配列に入れて返す（複数表示対応）
+------------------------------------------------------------ */
+function judgeType(values, total) {
+  if (total === 0) {
+    return [{ emoji: '🎫', title: '現場全力勢', comment: '「推し本人に会うことが最優先」' }];
+  }
+
+  const categories = computeCategoryValues(values);
+  const rawMax = Math.max(...Object.values(values));
+  const matches = [];
+
+  // 💄 ビジュアル全振り勢：現場準備費が総額の40%以上
+  if (categories.prep / total >= 0.4) {
+    matches.push({ emoji: '💄', title: 'ビジュアル全振り勢', comment: '「今日の自分が最高のグッズ」' });
+  }
+  // 🛍️ グッズ狂戦士：グッズ代が総額の50%以上
+  if (categories.goods / total >= 0.5) {
+    matches.push({ emoji: '🛍️', title: 'グッズ狂戦士', comment: '「会場限定という言葉に弱い」' });
+  }
+  // 🏨 快適遠征勢：ホテル代が総額の30%以上
+  if (categories.hotel / total >= 0.3) {
+    matches.push({ emoji: '🏨', title: '快適遠征勢', comment: '「睡眠の質は推し活の一部」' });
+  }
+  // ✈️ ガチ遠征勢：交通費合計が総額の50%以上
+  if (categories.transport / total >= 0.5) {
+    matches.push({ emoji: '✈️', title: 'ガチ遠征勢', comment: '「推しのためなら全国どこへでも」' });
+  }
+  // 🎫 現場全力勢：チケット代が全10項目の中で最大金額
+  if (values.ticket === rawMax) {
+    matches.push({ emoji: '🎫', title: '現場全力勢', comment: '「推し本人に会うことが最優先」' });
+  }
+
+  // どれにも当てはまらない場合のフォールバック
+  if (matches.length === 0) {
+    matches.push({ emoji: '🎫', title: '現場全力勢', comment: '「推し本人に会うことが最優先」' });
+  }
+
+  return matches;
+}
+
+/* ------------------------------------------------------------
+   推し活幸福度の計算
+   (チケット代 + グッズ代) ÷ 総額 × 100（整数）
+------------------------------------------------------------ */
+function calcHappiness(values, total) {
+  if (total === 0) return 0;
+  const raw = ((values.ticket + values.goods) / total) * 100;
+  return Math.round(raw);
+}
+
+function happinessComment(percent) {
+  if (percent >= 90) return '「お金は飛んだが心は満たされた」';
+  if (percent >= 70) return '「満足度高めの現場」';
+  if (percent >= 50) return '「良い推し活でした」';
+  return '「移動費との戦いだった」';
+}
+
+/* ------------------------------------------------------------
+   カテゴリの中で最も金額が大きいキーを求める
+   （「あなたの推し活傾向」「年間の推し活傾向」で共通利用）
+------------------------------------------------------------ */
+function findTopCategoryKey(categoryValues) {
+  let topKey = null;
+  let topValue = 0;
+  CATEGORY_META.forEach(meta => {
+    const v = categoryValues[meta.key] || 0;
+    if (v > topValue) {
+      topValue = v;
+      topKey = meta.key;
+    }
+  });
+  return topKey;
+}
+
+/* ------------------------------------------------------------
+   カテゴリ内訳リスト（割合バー）を指定の<ul>に描画する
+   汎用関数：診断結果／年間統計の両方で使う
+------------------------------------------------------------ */
+function renderTrendList(listEl, categoryValues, total) {
+  listEl.innerHTML = '';
+  CATEGORY_META.forEach((meta, index) => {
+    const value = categoryValues[meta.key] || 0;
+    const percent = total > 0 ? Math.round((value / total) * 100) : 0;
+    const li = document.createElement('li');
+    li.className = 'trend-row';
+    li.style.animationDelay = (index * 0.07) + 's';
+    li.innerHTML = `
+      <div class="trend-row-top">
+        <span>${meta.emoji} ${meta.label}</span>
+        <span class="trend-percent">${percent}%</span>
+      </div>
+      <div class="trend-bar-track">
+        <div class="trend-bar-fill" style="background:${meta.color};" data-target="${percent}"></div>
+      </div>
+    `;
+    listEl.appendChild(li);
+  });
+
+  // レイアウト確定後にバーを伸ばすアニメーションを発火
+  requestAnimationFrame(() => {
+    listEl.querySelectorAll('.trend-bar-fill').forEach(fill => {
+      fill.style.width = fill.getAttribute('data-target') + '%';
+    });
+  });
+}
+
+/* ------------------------------------------------------------
+   診断ボタン押下時の処理
+   ローディング演出 → 結果計算・表示
+------------------------------------------------------------ */
+const loadingOverlay = document.getElementById('loadingOverlay');
+const loadingText = document.getElementById('loadingText');
+const resultSection = document.getElementById('resultSection');
+
+// 直近の診断結果を保持（記録ボタン押下時に使う）
+let latestResult = null;
+
+document.getElementById('diagnoseBtn').addEventListener('click', () => {
+  const values = collectInputs();
+
+  // ランダムなローディングメッセージを表示
+  const message = LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)];
+  loadingText.textContent = message;
+  loadingOverlay.classList.add('show');
+
+  // 0.5〜1秒のランダムな演出時間
+  const delay = 500 + Math.random() * 500;
+
+  setTimeout(() => {
+    renderResult(values);
+    loadingOverlay.classList.remove('show');
+    resultSection.classList.add('show');
+    resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // 円グラフはcanvasのサイズが確定してから描画する
+    requestAnimationFrame(() => {
+      const canvas = document.getElementById('pieChart');
+      const categories = computeCategoryValues(values);
+      const total = Object.values(values).reduce((sum, v) => sum + v, 0);
+      drawPieChart(canvas, categories, total);
+    });
+  }, delay);
+});
+
+/* ------------------------------------------------------------
+   結果を画面に描画する
+------------------------------------------------------------ */
+function renderResult(values) {
+  const total = Object.values(values).reduce((sum, v) => sum + v, 0);
+  const categories = computeCategoryValues(values);
+
+  // 合計金額
+  document.getElementById('resultTotal').textContent = formatYen(total);
+
+  // 内訳（入力された項目のみ表示）
+  const breakdownList = document.getElementById('breakdownList');
+  breakdownList.innerHTML = '';
+  INPUT_ITEMS.forEach(item => {
+    const value = values[item.key];
+    if (value > 0) {
+      const li = document.createElement('li');
+      li.innerHTML = `<span>${item.emoji} ${item.label}</span><span class="amount">${formatYen(value)}</span>`;
+      breakdownList.appendChild(li);
+    }
+  });
+  if (breakdownList.children.length === 0) {
+    breakdownList.innerHTML = '<li><span>入力された項目がありません</span></li>';
+  }
+
+  // 推し活レベル
+  const level = judgeLevel(total);
+  document.getElementById('levelEmoji').textContent = level.emoji;
+  document.getElementById('levelTitle').textContent = level.title;
+  document.getElementById('levelComment').textContent = level.comment;
+
+  // 推し活タイプ診断（複数表示対応）
+  const types = judgeType(values, total);
+  renderTypeResults(types);
+
+  // 幸福度
+  const happiness = calcHappiness(values, total);
+  document.getElementById('happinessValue').textContent = happiness;
+  document.getElementById('happinessComment').textContent = happinessComment(happiness);
+
+  // オタク名言（ランダム）
+  const quote = OTAKU_QUOTES[Math.floor(Math.random() * OTAKU_QUOTES.length)];
+  document.getElementById('quoteBox').textContent = quote;
+
+  // あなたの推し活傾向（カテゴリ別割合バー＋コメント）
+  renderTrendList(document.getElementById('trendList'), categories, total);
+  const topKey = findTopCategoryKey(categories);
+  const trendInfo = topKey ? TREND_COMMENTS[topKey] : { emoji: '❔', title: 'ー', comment: '入力すると推し活傾向がわかります' };
+  document.getElementById('trendEmoji').textContent = trendInfo.emoji;
+  document.getElementById('trendTitle').textContent = trendInfo.title;
+  document.getElementById('trendComment').textContent = trendInfo.comment;
+
+  // 円グラフの凡例（グラフ本体はcanvasサイズ確定後に別途描画）
+  renderChartLegend(categories, total);
+
+  // 記録ボタン用に最新結果を保持（カテゴリ内訳も年間統計用に保存する）
+  latestResult = {
+    date: new Date().toISOString(),
+    total: total,
+    happiness: happiness,
+    levelTitle: level.title,
+    levelEmoji: level.emoji,
+    categories: categories,
+  };
+}
+
+/* ------------------------------------------------------------
+   推し活タイプ診断の複数バッジを描画する
+------------------------------------------------------------ */
+function renderTypeResults(matches) {
+  const container = document.getElementById('typeResultsContainer');
+  container.innerHTML = '';
+  matches.forEach((m, index) => {
+    const div = document.createElement('div');
+    div.className = 'type-badge';
+    div.style.animationDelay = (index * 0.08) + 's';
+    div.innerHTML = `
+      <span class="type-badge-emoji">${m.emoji}</span>
+      <div class="type-badge-text">
+        <p class="badge-title">${m.title}</p>
+        <p class="badge-sub">${m.comment}</p>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+/* ------------------------------------------------------------
+   円グラフの凡例（色・カテゴリ名・割合）を描画する
+------------------------------------------------------------ */
+function renderChartLegend(categoryValues, total) {
+  const legend = document.getElementById('chartLegend');
+  legend.innerHTML = '';
+  CATEGORY_META.forEach((meta, index) => {
+    const value = categoryValues[meta.key] || 0;
+    const percent = total > 0 ? Math.round((value / total) * 100) : 0;
+    const li = document.createElement('li');
+    li.style.animationDelay = (index * 0.06) + 's';
+    li.innerHTML = `<span class="legend-dot" style="background:${meta.color};color:${meta.color};"></span>${meta.emoji} ${meta.label} ${percent}%`;
+    legend.appendChild(li);
+  });
+}
+
+/* ------------------------------------------------------------
+   Canvasで円グラフを描画する（外部ライブラリ不使用）
+------------------------------------------------------------ */
+function drawPieChart(canvas, categoryValues, total) {
+  const dpr = window.devicePixelRatio || 1;
+  const size = canvas.clientWidth || 220;
+  canvas.width = size * dpr;
+  canvas.height = size * dpr;
+
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, size, size);
+
+  const cx = size / 2;
+  const cy = size / 2;
+  const radius = size / 2 - 6;
+
+  if (total <= 0) {
+    // データが無い場合は空のリングとメッセージを表示
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('データなし', cx, cy);
+    return;
+  }
+
+  let startAngle = -Math.PI / 2; // 12時方向からスタート
+  CATEGORY_META.forEach(meta => {
+    const value = categoryValues[meta.key] || 0;
+    if (value <= 0) return;
+    const sliceAngle = (value / total) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, radius, startAngle, startAngle + sliceAngle);
+    ctx.closePath();
+    ctx.fillStyle = CATEGORY_HEX[meta.key];
+    ctx.fill();
+    startAngle += sliceAngle;
+  });
+
+  // 中央をくり抜いてドーナツ状にし、ネオンテーマのカード色で塗りつぶす
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius * 0.55, 0, Math.PI * 2);
+  ctx.fillStyle = '#1a1a22';
+  ctx.fill();
+}
+
+/* ------------------------------------------------------------
+   年間記録機能（localStorage）
+------------------------------------------------------------ */
+
+// 保存済み履歴をすべて取得
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    // 壊れたデータが入っていた場合は空扱いにする
+    return [];
+  }
+}
+
+// 履歴を保存
+function saveHistory(history) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+}
+
+// 「今回の遠征を記録する」ボタン
+document.getElementById('saveBtn').addEventListener('click', () => {
+  if (!latestResult) return;
+  const history = loadHistory();
+  history.push(latestResult);
+  saveHistory(history);
+  renderSummary();
+  renderHistoryList();
+
+  // 保存した感を出すための簡易フィードバック
+  const btn = document.getElementById('saveBtn');
+  const originalText = btn.textContent;
+  btn.textContent = '記録しました ✓';
+  btn.disabled = true;
+  setTimeout(() => {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }, 1200);
+});
+
+/* ------------------------------------------------------------
+   年間サマリーの計算・表示
+   ※「年間」は保存されている全履歴のうち今年（当年）の記録を対象とする
+------------------------------------------------------------ */
+function judgeAnnualTitle(total) {
+  if (total >= 1000000) {
+    return { emoji: '👑', title: '推し活王' };
+  } else if (total >= 500000) {
+    return { emoji: '🔥', title: '限界遠征民' };
+  } else if (total >= 200000) {
+    return { emoji: '⚔️', title: '遠征戦士' };
+  } else if (total >= 50000) {
+    return { emoji: '🎫', title: '現場通い' };
+  } else {
+    return { emoji: '🌱', title: '推し活初心者' };
+  }
+}
+
+function renderSummary() {
+  const history = loadHistory();
+  const thisYear = new Date().getFullYear();
+  const yearRecords = history.filter(r => new Date(r.date).getFullYear() === thisYear);
+
+  const count = yearRecords.length;
+  const total = yearRecords.reduce((sum, r) => sum + r.total, 0);
+  const max = count > 0 ? Math.max(...yearRecords.map(r => r.total)) : 0;
+  const avg = count > 0 ? total / count : 0;
+
+  document.getElementById('summaryCount').textContent = count + '回';
+  document.getElementById('summaryTotal').textContent = formatYen(total);
+  document.getElementById('summaryMax').textContent = formatYen(max);
+  document.getElementById('summaryAvg').textContent = formatYen(avg);
+
+  const annual = judgeAnnualTitle(total);
+  document.getElementById('annualEmoji').textContent = annual.emoji;
+  document.getElementById('annualTitle').textContent = annual.title;
+
+  // 年間の推し活傾向（記録が1件もない場合はセクションごと隠す）
+  const annualTrendSection = document.getElementById('annualTrendSection');
+  if (count === 0) {
+    annualTrendSection.style.display = 'none';
+    return;
+  }
+  annualTrendSection.style.display = 'block';
+
+  // 古い記録にcategoriesが無い場合も落ちないよう0埋りで集計する
+  const annualCategories = { ticket: 0, transport: 0, hotel: 0, food: 0, prep: 0, goods: 0 };
+  yearRecords.forEach(r => {
+    const c = r.categories || {};
+    Object.keys(annualCategories).forEach(key => {
+      annualCategories[key] += (c[key] || 0);
+    });
+  });
+
+  renderTrendList(document.getElementById('annualTrendList'), annualCategories, total);
+
+  const topKey = findTopCategoryKey(annualCategories);
+  const emojiEl = document.getElementById('annualCommentEmoji');
+  const titleEl = document.getElementById('annualCommentTitle');
+  const descEl = document.getElementById('annualCommentDesc');
+  if (!topKey) {
+    emojiEl.textContent = '❔';
+    titleEl.textContent = 'まだ傾向がありません';
+    descEl.textContent = '遠征を記録すると年間の傾向がわかります。';
+  } else {
+    const info = ANNUAL_COMMENTS[topKey];
+    emojiEl.textContent = info.emoji;
+    titleEl.textContent = `今年のあなたは「${info.title}」でした`;
+    descEl.textContent = info.comment;
+  }
+}
+
+/* ------------------------------------------------------------
+   履歴一覧の表示（最新順・削除ボタンつき）
+------------------------------------------------------------ */
+function formatDate(isoString) {
+  const d = new Date(isoString);
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+function renderHistoryList() {
+  const history = loadHistory();
+  const container = document.getElementById('historyList');
+  container.innerHTML = '';
+
+  if (history.length === 0) {
+    container.innerHTML = '<p class="empty-msg">まだ記録がありません</p>';
+    return;
+  }
+
+  // 新しい記録が先頭に来るよう、元のインデックスを保持しつつ逆順に並べる
+  const indexed = history.map((record, index) => ({ record, index }));
+  indexed.reverse();
+
+  indexed.forEach(({ record, index }) => {
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.innerHTML = `
+      <div class="history-top">
+        <span class="history-date">${formatDate(record.date)}</span>
+        <span class="history-amount">${formatYen(record.total)}</span>
+      </div>
+      <div class="history-meta">
+        <span>${record.levelEmoji} ${record.levelTitle} ｜ 幸福度 ${record.happiness}%</span>
+        <button class="delete-one" data-index="${index}">削除</button>
+      </div>
+    `;
+    container.appendChild(item);
+  });
+
+  // 個別削除ボタンにイベントを付与
+  container.querySelectorAll('.delete-one').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.getAttribute('data-index'), 10);
+      if (confirm('この記録を削除しますか？')) {
+        const history = loadHistory();
+        history.splice(idx, 1);
+        saveHistory(history);
+        renderSummary();
+        renderHistoryList();
+      }
+    });
+  });
+}
+
+// 「全履歴を削除する」ボタン
+document.getElementById('deleteAllBtn').addEventListener('click', () => {
+  if (confirm('すべての参戦履歴を削除します。よろしいですか？')) {
+    localStorage.removeItem(STORAGE_KEY);
+    renderSummary();
+    renderHistoryList();
+  }
+});
+
+/* ------------------------------------------------------------
+   初期表示
+------------------------------------------------------------ */
+renderSummary();
+renderHistoryList();
+</script>
+
+</body>
+</html>
