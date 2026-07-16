@@ -570,8 +570,20 @@ input, datalist {
 .modal-sm {
   border-radius: var(--radius);
   max-width: 320px;
+  width: calc(100% - 40px);
   margin: auto;
   padding: 24px 20px;
+  animation: fadeInScale 0.2s ease;
+}
+
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* 削除確認は画面中央に表示 */
+#confirm-overlay {
+  align-items: center;
 }
 
 .modal-header {
